@@ -170,7 +170,11 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# Virtual Environments
 venv/
+
+# Data Directory (due to confidentiality)
+data/
 
 # PyPI configuration file
 .pypirc
