@@ -1,0 +1,28 @@
+# Libraries required for Virtual Environment Setup
+# Python version: 3.12
+# Confirmed working on Ubuntu 24.04 via WSL2
+
+# SETUP INSTRUCTIONS
+# run the following command to create a virtual environment:
+# python3 -m venv env
+# Activate the virtual environment:
+# source env/bin/activate
+# Install the required libraries:
+# pip install -r requirements.txt
+
+
+# Core Libraries
+numpy
+pandas
+scipy
+
+# Machine Learning
+tensorflow[and-cuda]
+scikit-learn
+keras
+
+# Data Visualization
+matplotlib
+seaborn
+plotly
+
