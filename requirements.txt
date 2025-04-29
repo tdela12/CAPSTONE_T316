@@ -20,6 +20,7 @@ scipy
 tensorflow[and-cuda]
 scikit-learn
 keras
+category_encoders
 
 # Data Visualization
 matplotlib
