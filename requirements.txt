@@ -4,7 +4,7 @@
 
 # SETUP INSTRUCTIONS
 # run the following command to create a virtual environment:
-# python3 -m venv env
+# python3 -m venv venv
 # Activate the virtual environment:
 # source venv/bin/activate
 # Install the required libraries:
@@ -17,13 +17,14 @@ pandas
 scipy
 
 # Machine Learning
-tensorflow[and-cuda]
 scikit-learn
-keras
-category_encoders
+catboost
+
 
 # Data Visualization
 matplotlib
-seaborn
-plotly
+
+#Jupyter and IPython
+jupyterlab
+ipykernel
 
