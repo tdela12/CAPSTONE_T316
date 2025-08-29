@@ -28,3 +28,6 @@ matplotlib
 jupyterlab
 ipykernel
 
+#Local Server
+fastapi
+uvicorn
