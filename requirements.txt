@@ -23,6 +23,7 @@ catboost
 
 # Data Visualization
 matplotlib
+shap
 
 #Jupyter and IPython
 jupyterlab
