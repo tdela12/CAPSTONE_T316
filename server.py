@@ -16,7 +16,7 @@ models = {
 
 # Request format
 class PredictRequest(BaseModel):
-    model_name: str
+    model_name: strc  
     features: list[float]
 
 @app.post("/predict")
