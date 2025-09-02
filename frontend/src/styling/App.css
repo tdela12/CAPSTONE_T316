@@ -1,0 +1,99 @@
+/* Root wrapper */
+#root {
+  margin: 0 auto;
+  text-align: center;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #222;
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Buttons */
+button {
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  background-color: #491724;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  background-color: #723947;
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+/* App background */
+.App {
+  width: 100vw;
+  min-height: 100vh;
+  background: linear-gradient(
+      rgba(0, 0, 0, 0.5), 
+      rgba(0, 0, 0, 0.5)
+    );
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Page container */
+.MainPage {
+  background-color: rgba(255, 255, 255, 0.95);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 900px;
+  margin: 2rem auto;
+  border-left: solid 5px #491724;
+  border-right: solid 5px #491724;
+  border-radius: 12px;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+  padding: 2rem;
+}
+
+/* Login form */
+.login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 1.1rem;
+  width: 100%;
+}
+
+.featureForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 80%;
+  max-width: 500px;
+  text-align: left;
+}
+
+/* Inputs */
+.enterBar {
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  transition: 0.3s border, 0.3s box-shadow;
+}
+
+.enterBar:focus {
+  border-color: #491724;
+  box-shadow: 0 0 5px rgba(73, 23, 36, 0.4);
+  outline: none;
+}
+
