@@ -178,3 +178,6 @@ data/
 
 # PyPI configuration file
 .pypirc
+
+# Ignore CatBoost training artifacts
+catboost_info/
