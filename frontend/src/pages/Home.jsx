@@ -1,7 +1,9 @@
 import { useState } from "react"
+import { usePredict } from "../api";
 
 
 export default function Home() {
+  const [taskType, setTaskType] = useState('')
   const [taskName, setTaskName] = useState('')
   const [odometer, setOdometer] = useState(0.0)
   const [year, setYear] = useState(0)
@@ -14,15 +16,32 @@ export default function Home() {
   const [distance, setDistance] = useState(0.0)
   const [months, setMonths] = useState(0.0)
   const [adjustedPrice, setAdjustedPrice] = useState(0.0)
-  const [response, setResponse] = useState('');
-  const handleLogin = (event) => {
+  const [response, predict] = usePredict();
+  const handlePredict = (event) => {
     event.preventDefault();
-    setResponse(`Predicting for ${make} ${model}`);
+    predict(taskType, taskName, odometer, make, model, year, fuelType, engineSize, transmission, driveType, distance, months, adjustedPrice)
   }
   return (
     <div className="MainPage">
       <div className="login">
-        <form onSubmit={handleLogin} className="featureForm">
+        <form onSubmit={handlePredict} className="featureForm">
+
+          {/* task type Dropdown */}
+          <label htmlFor="taskType">Select task type to predict:</label>
+          <select
+            className="enterBar"
+            name="taskType"
+            id="taskType"
+            value={taskType}
+            onChange={(event) => setTaskType(event.target.value)}
+          >
+            <option value="">-- Choose a task --</option>
+            <option value="Capped">Capped</option>
+            <option value="Logbook">Logbook</option>
+            <option value="Prescribed">Prescribed</option>
+            <option value="Repair">Repair</option>
+          </select>
+
           {/* Make Input */}
           <label htmlFor="make">Enter Make feature value:</label>
           <input
@@ -49,18 +68,7 @@ export default function Home() {
             }}
           />
 
-          {/* taskName Input */}
-          <label htmlFor="taskName">Enter taskName feature value:</label>
-          <input
-            className="enterBar"
-            type="text"
-            name="taskName"
-            id="taskName"
-            value={taskName}
-            onChange={(event) => {
-              setTaskName(event.target.value);
-            }}
-          />
+          {/* taskName Input */} <label htmlFor="taskName">Enter taskName feature value:</label> <input className="enterBar" type="text" name="taskName" id="taskName" value={taskName} onChange={(event) => { setTaskName(event.target.value); }} />
 
           {/* odometer Input */}
           <label htmlFor="odometer">Enter odometer feature value:</label>
@@ -88,31 +96,37 @@ export default function Home() {
             }}
           />
 
-          {/* fuelType Input */}
-          <label htmlFor="fuelType">Enter fuelType feature value:</label>
-          <input
+          {/* fuelType Dropdown */}
+          <label htmlFor="fuelType">Select fuelType feature value:</label>
+          <select
             className="enterBar"
-            type="text"
             name="fuelType"
             id="fuelType"
             value={fuelType}
-            onChange={(event) => {
-              setFuelType(event.target.value);
-            }}
-          />
+            onChange={(event) => setFuelType(event.target.value)}
+          >
+            <option value="">-- Choose a fuel type --</option>
+            <option value="Petrol">Petrol</option>
+            <option value="Diesel">Diesel</option>
+            <option value="Electric">Electric</option>
+            <option value="LPG">LPG</option>
+            <option value="nan">nan</option>
+          </select>
 
-          {/* transmission Input */}
-          <label htmlFor="transmission">Enter transmission feature value:</label>
-          <input
+          {/* transmission Dropdown */}
+          <label htmlFor="transmission">Select transmission feature value:</label>
+          <select
             className="enterBar"
-            type="text"
             name="transmission"
             id="transmission"
             value={transmission}
-            onChange={(event) => {
-              setTransmission(event.target.value);
-            }}
-          />
+            onChange={(event) => setTransmission(event.target.value)}
+          >
+            <option value="">-- Choose a task --</option>
+            <option value="Auto">Auto</option>
+            <option value="Manual">Manual</option>
+            <option value="Electric">Electric</option>
+          </select>
 
           {/* engineSize Input */}
           <label htmlFor="engineSize">Enter engineSize feature value:</label>
@@ -127,18 +141,22 @@ export default function Home() {
             }}
           />
 
-          {/* driveType Input */}
-          <label htmlFor="driveType">Enter driveType feature value:</label>
-          <input
+          {/* driveType Dropdown */}
+          <label htmlFor="driveType">Select driveType feature value:</label>
+          <select
             className="enterBar"
-            type="text"
             name="driveType"
             id="driveType"
             value={driveType}
-            onChange={(event) => {
-              setDriveType(event.target.value);
-            }}
-          />
+            onChange={(event) => setDriveType(event.target.value)}
+          >
+            <option value="">-- Choose a task --</option>
+            <option value="2WD">2WD</option>
+            <option value="4WD">4WD</option>
+            <option value="nan">nan</option>
+          </select>
+
+          
 
           {/* distance Input */}
           <label htmlFor="distance">Enter distance feature value:</label>
@@ -179,11 +197,8 @@ export default function Home() {
             }}
           />
 
-
-
           <button type="submit" id="predictBtn">Predict</button>
         </form>
-
 
         {response !== '' ? <p id="responseStatus">{response}</p> : null}
 
