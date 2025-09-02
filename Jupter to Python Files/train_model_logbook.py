@@ -16,8 +16,54 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 # %%
 df = pd.read_csv('data/preprocessed_log_data.csv')
 df = df[df['Label'] == 1]
+
+# %% [markdown]
+# ## Grouping / Dropping Rare Tasks 
+# - Decision must be made here to either drop rare tasks completely or group into a rare category.
+# - Lots of variance so grouping is probably not a good idea 
+
+# %%
+task_counts = df['TaskName'].value_counts()
+
+# Define a threshold 
+threshold = 100
+rare_tasks = task_counts[task_counts < threshold].index
+
+
+print(len(df['TaskName'].unique()))
+
+# Group rare tasks 
+#df['TaskName'] = df['TaskName'].replace(rare_tasks, 'Other')
+
+# Drop rare tasks
+df = df[~df['TaskName'].isin(rare_tasks)].copy()
+
+print(len(df['TaskName'].unique()))
+
+# %% [markdown]
+# ## Grouping / Dropping Rare Models
+
+# %%
+task_counts = df['Model'].value_counts()
+
+# Define a threshold 
+threshold = 20
+rare_tasks = task_counts[task_counts < threshold].index
+
+
+print(len(df['Model'].unique()))
+
+# Group rare models 
+#df['TaskName'] = df['TaskName'].replace(rare_tasks, 'Other')
+
+# Drop rare models
+df = df[~df['Model'].isin(rare_tasks)].copy()
+
+print(len(df['Model'].unique()))
+
 df.drop(columns=['Label', 'TaskName', 'Transmission', 'IsHybrid', 'DriveType'], inplace=True) # Drop TaskName as all are 'Logbook'
 df.head()
+
 
 # %%
 df['Distance'] = df['Distance'].fillna(df['Odometer'])
