@@ -3,8 +3,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-from catboost import CatBoostRegressor
+from catboost import CatBoostRegressor, Pool
 import numpy as np
+import shap
+import matplotlib.pyplot as plt
+import io
+import base64
 
 app = FastAPI()
 
@@ -94,6 +98,41 @@ def preprosses(raw_data: CarFeatures, model_name: str):
     return [feature_list]
 
 
+def generate_shap_plot(model, processed, feature_names):
+    # Dynamically identify categorical features
+    categorical_set = {"TaskName", "DriveType", "Make", "Model", "FuelType"}
+    cat_features = [f for f in feature_names if f in categorical_set]
+    # Calculate SHAP values
+    shap_values = model.get_feature_importance(
+        Pool(processed, feature_names=feature_names,  cat_features=cat_features),
+        type="ShapValues"
+    )
+    
+    # shap_values includes an extra column for expected_value
+    shap_values_matrix = shap_values[:, :-1]  
+    expected_value = shap_values[:, -1][0]
+
+    # Use SHAP’s waterfall plot for the first sample
+    explainer = shap.Explanation(
+        values=shap_values_matrix[0],
+        base_values=expected_value,
+        data=processed[0],
+        feature_names=feature_names,
+    )
+    
+    plt.figure()
+    shap.plots.waterfall(explainer, show=False)
+
+    # Save plot to base64 string
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", bbox_inches="tight")
+    plt.close()
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+    return img_base64
+
+
 
 # -----------------------------
 # Prediction endpoint
@@ -111,4 +150,6 @@ def predict(req: PredictRequest):
     # Make prediction
     prediction = model.predict(processed)
 
-    return {"model": req.model_name, "prediction": prediction.tolist()}
+    shap_plot = generate_shap_plot(model, processed, MODEL_FEATURES[req.model_name])
+
+    return {"model": req.model_name, "prediction": prediction.tolist(), "shap_plot": shap_plot}
