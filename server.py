@@ -14,14 +14,14 @@ models = {
     "Capped": CatBoostRegressor().load_model("models/capped_model.cbm"),
     "Logbook": CatBoostRegressor().load_model("models/logbook_model.cbm"),
     "Prescribed": CatBoostRegressor().load_model("models/prescribed_model.cbm"),
-    #"Repair": CatBoostRegressor().load_model("models/repair_model.cbm"),
+    "Repair": CatBoostRegressor().load_model("models/repair_model.cbm"),
 }
 
 MODEL_FEATURES ={
     "Capped": ["Make", "Model", "Year", "FuelType", "EngineSize", "DriveType", "Distance", "Months"],
     "Logbook": ["Make", "Model", "Year", "FuelType", "EngineSize", "Distance", "Months"],
     "Prescribed": ["Make", "Model", "Year", "FuelType", "EngineSize", "Transmission", "DriveType", "Distance"],
-    #"Repair": ["Make", "Model", "FuelType", "EngineSize", "Odometer", "Distance", "Months"],
+    "Repair": ["Make", "Model", "FuelType", "EngineSize", "Odometer", "Distance", "Months"],
 }
 
 # -----------------------------
