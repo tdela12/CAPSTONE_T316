@@ -16,11 +16,13 @@ export default function Home() {
   const [distance, setDistance] = useState(0.0)
   const [months, setMonths] = useState(0.0)
   const [adjustedPrice, setAdjustedPrice] = useState(0.0)
-  const [response, predict] = usePredict();
+  const {response, predict} = usePredict();
+
   const handlePredict = (event) => {
     event.preventDefault();
     predict(taskType, taskName, odometer, make, model, year, fuelType, engineSize, transmission, driveType, distance, months, adjustedPrice)
   }
+
   return (
     <div className="MainPage">
       <div className="login">
@@ -191,7 +193,7 @@ export default function Home() {
             type="text"
             name="adjustedPrice"
             id="adjustedPrice"
-            value={model}
+            value={adjustedPrice}
             onChange={(event) => {
               setAdjustedPrice(event.target.value);
             }}
