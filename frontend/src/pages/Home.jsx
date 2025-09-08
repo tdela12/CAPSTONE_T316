@@ -16,7 +16,7 @@ export default function Home() {
   const [distance, setDistance] = useState(0.0)
   const [months, setMonths] = useState(0.0)
   const [adjustedPrice, setAdjustedPrice] = useState(0.0)
-  const {response, predict} = usePredict();
+  const { data, error, predict } = usePredict("");
 
   const handlePredict = (event) => {
     event.preventDefault();
@@ -158,7 +158,7 @@ export default function Home() {
             <option value="nan">nan</option>
           </select>
 
-          
+
 
           {/* distance Input */}
           <label htmlFor="distance">Enter distance feature value:</label>
@@ -201,8 +201,73 @@ export default function Home() {
 
           <button type="submit" id="predictBtn">Predict</button>
         </form>
+        <div>
+          {error && <p>{error}</p>}
 
-        {response !== '' ? <p id="responseStatus">{response}</p> : null}
+          {data && (
+            <>
+              <p>Prediction: {data.prediction}</p>
+
+              {data.message ? (
+                <p>{data.message}</p>
+              ) : (
+                <>
+                  <h4>Comparison</h4>
+                  <table border="1" cellPadding="5">
+                    <thead>
+                      <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(data.comparison || {}).map(([key, value]) => (
+                        <tr key={key}>
+                          <td>{key}</td>
+                          <td>{value?.toString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Plots */}
+                  <h4>SHAP Plot</h4>
+                  {data.shap_plot && (
+                    <img
+                      src={`data:image/png;base64,${data.shap_plot}`}
+                      alt="SHAP"
+                      style={{ maxWidth: "600px" }}
+                    />
+                  )}
+                  <div style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
+                    {data.plots?.boxplot_png && (
+                      <div style={{ flex: 1 }}>
+                        <h4>Boxplot</h4>
+                        <img
+                          src={`data:image/png;base64,${data.plots.boxplot_png}`}
+                          alt="Boxplot"
+                          style={{ width: "100%" }}
+                        />
+                      </div>
+                    )}
+                    {data.plots?.histogram_png && (
+                      <div style={{ flex: 1 }}>
+                        <h4>Histogram</h4>
+                        <img
+                          src={`data:image/png;base64,${data.plots.histogram_png}`}
+                          alt="Histogram"
+                          style={{ width: "100%" }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+
+        </div>
 
       </div>
     </div>

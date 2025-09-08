@@ -97,3 +97,16 @@ button:active {
   outline: none;
 }
 
+#imgElem {
+  margin-top: 20px;
+  max-width: 80%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border: 2px solid #491724;
+  transition: transform 0.2s ease-in-out;
+}
+
+#imgElem:hover {
+  transform: scale(1.02);
+}

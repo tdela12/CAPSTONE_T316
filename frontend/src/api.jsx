@@ -1,9 +1,19 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-export function usePredict(taskType, taskName, odometer, make, model, year, fuelType, engineSize, transmission, driveType, distance, months, adjustedPrice) {
-  const [response, setResponse] = useState('')
-  const predict = (taskType, taskName, odometer, make, model, year, fuelType, engineSize, transmission, driveType, distance, months, adjustedPrice) => {
-    const url = 'http://127.0.0.1:8000/predict'
+export function usePredict(
+  taskType, taskName, odometer, make, model, year,
+  fuelType, engineSize, transmission, driveType,
+  distance, months, adjustedPrice
+) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+
+  const predict = (
+    taskType, taskName, odometer, make, model, year,
+    fuelType, engineSize, transmission, driveType,
+    distance, months, adjustedPrice
+  ) => {
+    const url = "http://127.0.0.1:8000/predict";
     const body = {
       model_name: taskType,
       features: {
@@ -22,31 +32,22 @@ export function usePredict(taskType, taskName, odometer, make, model, year, fuel
       },
     };
 
-    const jsonBody = JSON.stringify(body);
-
     fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonBody,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     })
       .then((res) => res.json())
-      .then((data) => {
-        console.log("API response:", data);
-        if (data.prediction && data.prediction.length > 0) {
-          setResponse(data.prediction[0]);
-        } else {
-          setResponse("No prediction returned");
-        }
+      .then((resData) => {
+        console.log("API response:", resData);
+        setData(resData);     // store full API response
+        setError(null);
       })
-      .catch((error) => {
-        console.error("Error fetching prediction:", error);
-        setResponse("Error fetching prediction");
+      .catch((err) => {
+        console.error("Error fetching prediction:", err);
+        setError("Error fetching prediction");
       });
-  }
-  return {
-    response,
-    predict
   };
+
+  return { data, error, predict };
 }
