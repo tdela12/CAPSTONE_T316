@@ -6,9 +6,14 @@ from typing import Optional
 from catboost import CatBoostRegressor, Pool
 import numpy as np
 import shap
+import matplotlib
+matplotlib.use("Agg")  # non-GUI backend for server-side plotting
 import matplotlib.pyplot as plt
 import io
 import base64
+import json
+import pandas as pd
+
 
 app = FastAPI()
 
@@ -49,6 +54,24 @@ MODEL_FEATURES ={
 }
 
 # -----------------------------
+# Open processed data
+# -----------------------------
+
+try:
+    historical_df = pd.read_csv("models/training_context.csv")
+except FileNotFoundError:
+    historical_df = pd.DataFrame(columns=["AdjustedPrice"])
+
+price_series = historical_df["AdjustedPrice"]
+price_summary = {
+    "min": price_series.min(),
+    "q1": price_series.quantile(0.25),
+    "median": price_series.median(),
+    "q3": price_series.quantile(0.75),
+    "max": price_series.max()
+}
+
+# -----------------------------
 # Pydantic models for input
 # -----------------------------
 class CarFeatures(BaseModel):
@@ -72,7 +95,7 @@ class PredictRequest(BaseModel):
 # -----------------------------
 # Preprocessing
 # -----------------------------
-def preprosses(raw_data: CarFeatures, model_name: str):
+def preprocess(raw_data: CarFeatures, model_name: str):
     data_dict = raw_data.model_dump()
     
     # Drop unwanted features
@@ -86,7 +109,7 @@ def preprosses(raw_data: CarFeatures, model_name: str):
         else:
             cleaned_data[cat] = str(value)
             
-    
+
     # Get the correct feature order for the model
     feature_order = MODEL_FEATURES.get(model_name)
     if not feature_order:
@@ -96,6 +119,54 @@ def preprosses(raw_data: CarFeatures, model_name: str):
     feature_list = [cleaned_data.get(k, 0) for k in feature_order]  # default 0 if missing
     
     return [feature_list]
+
+def filter_df_by_features(df: pd.DataFrame, raw_data: CarFeatures):
+
+    data_dict = raw_data.model_dump()
+
+    make = data_dict.get("Make")
+    model = data_dict.get("Model")
+    year = data_dict.get("Year")
+
+    filtered_df = df[
+        (df["Make"] == make) &
+        (df["Model"] == model) &
+        (df["Year"] == year)
+    ]
+    return filtered_df
+
+def build_summary(df, price_col="AdjustedPrice"):
+    prices = df[price_col].dropna()
+    if prices.empty:
+        return {"mean": 0, "median": 0, "iqr_low": 0, "iqr_high": 0}
+
+    q1 = prices.quantile(0.25)
+    q3 = prices.quantile(0.75)
+    return {
+        "mean": prices.mean(),
+        "median": prices.median(),
+        "iqr_low": q1,
+        "iqr_high": q3
+    }
+
+def compare_price(predicted_price, summary):
+    iqr_low = summary.get("iqr_low", 0)
+    iqr_high = summary.get("iqr_high", 0)
+    mean = summary.get("mean", 0)
+    median = summary.get("median", 0)
+
+    in_iqr = iqr_low <= predicted_price <= iqr_high
+    z = (predicted_price - mean) / ((iqr_high - iqr_low) / 1.349) if (iqr_high - iqr_low) != 0 else 0
+
+    return {
+        "predicted_price": predicted_price,
+        "mean": mean,
+        "median": median,
+        "iqr_low": iqr_low,
+        "iqr_high": iqr_high,
+        "within_iqr": in_iqr,
+        "z_from_mean": z
+    }
 
 
 def generate_shap_plot(model, processed, feature_names):
@@ -132,6 +203,37 @@ def generate_shap_plot(model, processed, feature_names):
 
     return img_base64
 
+def fig_to_base64(fig) -> str:
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode("utf-8")
+
+def plot_price_comparison_base64(filtered_df, predicted_price, price_col="AdjustedPrice"):
+    # ----- Boxplot -----
+    fig1, ax1 = plt.subplots(figsize=(6, 4))
+    ax1.boxplot(filtered_df[price_col].dropna(), vert=False, patch_artist=True,
+                boxprops=dict(facecolor='lightblue'))
+    ax1.axvline(predicted_price, color='red', linestyle='--', label='Predicted')
+    ax1.set_title("Historical Price Distribution (Boxplot)")
+    ax1.set_xlabel("Price")
+    ax1.legend()
+    box_b64 = fig_to_base64(fig1)
+    plt.close(fig1)
+
+    # ----- Histogram -----
+    fig2, ax2 = plt.subplots(figsize=(6, 4))
+    ax2.hist(filtered_df[price_col].dropna(), bins=20, edgecolor='black', alpha=0.7)
+    ax2.axvline(predicted_price, color='red', linestyle='--', label='Predicted')
+    ax2.set_title("Historical Price Distribution (Histogram)")
+    ax2.set_xlabel("Price")
+    ax2.set_ylabel("Frequency")
+    ax2.legend()
+    hist_b64 = fig_to_base64(fig2)
+    plt.close(fig2)
+
+    return box_b64, hist_b64
+
 
 
 # -----------------------------
@@ -145,11 +247,36 @@ def predict(req: PredictRequest):
     model = models[req.model_name]
 
     # Preprocess features
-    processed = preprosses(req.features, req.model_name)
+    processed = preprocess(req.features, req.model_name)
 
     # Make prediction
     prediction = model.predict(processed)
+    prediction = float(prediction[0])
 
     shap_plot = generate_shap_plot(model, processed, MODEL_FEATURES[req.model_name])
 
-    return {"model": req.model_name, "prediction": prediction.tolist(), "shap_plot": shap_plot}
+    filtered = filter_df_by_features(historical_df, req.features)
+
+    if filtered.empty:
+        return {
+            "model": req.model_name,
+            "prediction": prediction,
+            "shap_plot": shap_plot,
+            "message": "No historical rows match these features"
+        }
+    summary = build_summary(filtered, price_col="AdjustedPrice")
+    comparison = compare_price(prediction, summary)
+
+    box_b64, hist_b64 = plot_price_comparison_base64(filtered, prediction, price_col="AdjustedPrice")
+
+    return {
+        "model": req.model_name,
+        "prediction": prediction,
+        "shap_plot": shap_plot,          
+        "historical_summary": summary,   
+        "comparison": comparison,        
+        "plots": {
+            "boxplot_png": box_b64,
+            "histogram_png": hist_b64
+        }
+    }
