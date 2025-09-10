@@ -64,20 +64,45 @@ MODEL_FEATURES ={
 # -----------------------------
 # Load historical training context data
 # -----------------------------
-try:
-    historical_df = pd.read_csv("models/training_context.csv")
-except FileNotFoundError:
-    # If no context file exists, use empty DataFrame
-    historical_df = pd.DataFrame(columns=["AdjustedPrice"])
+def load_csv(file_path):
+    try:
+        return pd.read_csv(file_path)
+    except FileNotFoundError:
+        return pd.DataFrame(columns=["AdjustedPrice"])
+
+historical_sets = {
+    "Capped": load_csv("data/preprocessed_capped_data.csv"),
+    "Logbook": load_csv("data/preprocessed_log_data.csv"),
+    "Prescribed": load_csv("data/preprocessed_prescribed_data.csv"),
+    "Repair": load_csv("data/preprocessed_repair_data.csv"),
+}
+
+def build_price_summary(df, price_col="AdjustedPrice"):
+    # Make sure the column exists
+    if price_col not in df.columns:
+        return {"min": 0.0, "q1": 0.0, "median": 0.0, "q3": 0.0, "max": 0.0}
+
+    # Drop missing values
+    price_series = df[price_col].dropna()
+
+    # If no valid data, return default zeros
+    if price_series.empty:
+        return {"min": 0.0, "q1": 0.0, "median": 0.0, "q3": 0.0, "max": 0.0}
+
+    # Compute summary
+    return {
+        "min": float(price_series.min()),
+        "q1": float(price_series.quantile(0.25)),
+        "median": float(price_series.median()),
+        "q3": float(price_series.quantile(0.75)),
+        "max": float(price_series.max()),
+    }
+
 
 # Extract overall price summary (used for global stats)
-price_series = historical_df["AdjustedPrice"]
-price_summary = {
-    "min": price_series.min(),
-    "q1": price_series.quantile(0.25),
-    "median": price_series.median(),
-    "q3": price_series.quantile(0.75),
-    "max": price_series.max()
+price_summaries = {
+    name: build_price_summary(df)
+    for name, df in historical_sets.items()
 }
 
 # -----------------------------
@@ -148,29 +173,29 @@ def filter_df_by_features(df: pd.DataFrame, raw_data: CarFeatures):
     ]
     return filtered_df
 
-def build_summary(df, price_col="AdjustedPrice"):
-    prices = df[price_col].dropna()
-    if prices.empty:
-        return {"mean": 0, "median": 0, "iqr_low": 0, "iqr_high": 0}
-
-    q1 = prices.quantile(0.25)
-    q3 = prices.quantile(0.75)
-    
-    return {
-        "mean": prices.mean(),
-        "median": prices.median(),
-        "iqr_low": q1,
-        "iqr_high": q3
-    }
 
 def compare_price(predicted_price, summary):
-    iqr_low = summary.get("iqr_low", 0)
-    iqr_high = summary.get("iqr_high", 0)
+    iqr_low = summary.get("q1", 0)
+    iqr_high = summary.get("q3", 0)
     mean = summary.get("mean", 0)
     median = summary.get("median", 0)
 
+    # Check if prediction falls inside IQR
     in_iqr = iqr_low <= predicted_price <= iqr_high
-    z = (predicted_price - mean) / ((iqr_high - iqr_low) / 1.349) if (iqr_high - iqr_low) != 0 else 0
+
+    # Robust z-score (centered at median, scaled by IQR)
+    z_from_median = (
+        (predicted_price - median) / ((iqr_high - iqr_low) / 1.349)
+        if (iqr_high - iqr_low) != 0 else 0
+    )
+
+    # Confidence classification
+    if in_iqr:
+        confidence = "high"
+    elif summary.get("min", 0) <= predicted_price <= summary.get("max", 0):
+        confidence = "medium"
+    else:
+        confidence = "low"
 
     return {
         "predicted_price": predicted_price,
@@ -179,7 +204,8 @@ def compare_price(predicted_price, summary):
         "iqr_low": iqr_low,
         "iqr_high": iqr_high,
         "within_iqr": in_iqr,
-        "z_from_mean": z
+        "z_from_median": z_from_median,
+        "confidence": confidence
     }
 
 
@@ -248,6 +274,33 @@ def plot_price_comparison_base64(filtered_df, predicted_price, price_col="Adjust
 
     return box_b64, hist_b64
 
+def plot_distance_month_comparison(filtered_df, predicted_price, month_value, distance_value):
+    plots = {}
+
+    # ----- Scatter: Months vs Price -----
+    fig1, ax1 = plt.subplots(figsize=(6,4))
+    ax1.scatter(filtered_df["Months"], filtered_df["AdjustedPrice"], alpha=0.6, label="Historical")
+    ax1.scatter([month_value], [predicted_price], color="red", s=100, label="Predicted", zorder=5)
+    ax1.set_xlabel("Months")
+    ax1.set_ylabel("Price")
+    ax1.set_title("Price vs Months")
+    ax1.legend()
+    plots["month_vs_price"] = fig_to_base64(fig1)
+    plt.close(fig1)
+
+    # ----- Scatter: Distance vs Price -----
+    fig2, ax2 = plt.subplots(figsize=(6,4))
+    ax2.scatter(filtered_df["Distance"], filtered_df["AdjustedPrice"], alpha=0.6, label="Historical")
+    ax2.scatter([distance_value], [predicted_price], color="red", s=100, label="Predicted", zorder=5)
+    ax2.set_xlabel("Distance")
+    ax2.set_ylabel("Price")
+    ax2.set_title("Price vs Distance")
+    ax2.legend()
+    plots["distance_vs_price"] = fig_to_base64(fig2)
+    plt.close(fig2)
+
+    return plots
+
 # -----------------------------
 # Prediction endpoint
 # -----------------------------
@@ -257,38 +310,46 @@ def predict(req: PredictRequest):
         return {"error": f"Unknown model {req.model_name}"}
     
     model = models[req.model_name]
-
-    # Preprocess features
     processed = preprocess(req.features, req.model_name)
+    prediction = float(model.predict(processed)[0])
+    shap_b64 = generate_shap_plot(model, processed, MODEL_FEATURES[req.model_name])
 
-    # Make prediction
-    prediction = model.predict(processed)
-    prediction = float(prediction[0])
+    hist_df = historical_sets.get(req.model_name, pd.DataFrame(columns=["AdjustedPrice"]))
+    filtered = filter_df_by_features(hist_df, req.features)
 
-    shap_plot = generate_shap_plot(model, processed, MODEL_FEATURES[req.model_name])
-
-    filtered = filter_df_by_features(historical_df, req.features)
+    month_distance_plots = {}
+    if req.model_name in ["Capped", "Logbook"]:
+        month_distance_plots = plot_distance_month_comparison(
+            filtered,
+            predicted_price=prediction,
+            month_value=req.features.Months,
+            distance_value=req.features.Distance
+        )
 
     if filtered.empty:
         return {
             "model": req.model_name,
             "prediction": prediction,
-            "shap_plot": shap_plot,
+            "plots": {
+                "shap_png": shap_b64,
+                **month_distance_plots
+            },
             "message": "No historical rows match these features"
         }
-    summary = build_summary(filtered, price_col="AdjustedPrice")
-    comparison = compare_price(prediction, summary)
 
+    summary = build_price_summary(filtered, price_col="AdjustedPrice")
+    comparison = compare_price(prediction, summary)
     box_b64, hist_b64 = plot_price_comparison_base64(filtered, prediction, price_col="AdjustedPrice")
 
     return {
         "model": req.model_name,
         "prediction": prediction,
-        "shap_plot": shap_plot,          
         "historical_summary": summary,   
         "comparison": comparison,        
         "plots": {
             "boxplot_png": box_b64,
-            "histogram_png": hist_b64
+            "histogram_png": hist_b64,
+            "shap_png": shap_b64,
+            **month_distance_plots
         }
     }
