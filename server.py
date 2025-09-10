@@ -55,10 +55,10 @@ models = {
 
 # Define required feature order for each model
 MODEL_FEATURES ={
-    "Capped": ["Make", "Model", "Year", "FuelType", "EngineSize", "DriveType", "Distance", "Months"],
-    "Logbook": ["Make", "Model", "Year", "FuelType", "EngineSize", "Distance", "Months"],
-    "Prescribed": ["Make", "Model", "Year", "FuelType", "EngineSize", "Transmission", "DriveType", "Distance"],
-    "Repair": ["Make", "Model", "FuelType", "EngineSize", "Odometer", "Distance", "Months"],
+    "Capped": ["Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance",],
+    "Logbook": ["Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance", "Months"],
+    "Prescribed": ["Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance",],
+    "Repair": ["TaskName", "Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance",],
 }
 
 # -----------------------------
@@ -110,7 +110,6 @@ price_summaries = {
 # -----------------------------
 class CarFeatures(BaseModel):
     TaskName: str
-    Odometer: Optional[float] = None
     Make: str
     Model: str
     Year: Optional[int] = None
@@ -120,7 +119,7 @@ class CarFeatures(BaseModel):
     DriveType: Optional[str] = None 
     Distance: Optional[float] = None
     Months: Optional[float] = None
-    AdjustedPrice: float
+    AdjustedPrice: Optional[float] = None
 
 class PredictRequest(BaseModel):
     model_name: str
