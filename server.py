@@ -1,4 +1,6 @@
-# server.py
+# -----------------------------
+# Imports
+# -----------------------------
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,18 +16,21 @@ import base64
 import json
 import pandas as pd
 
-
+# -----------------------------
+# FastAPI app initialization
+# -----------------------------
 app = FastAPI()
 
 # -----------------------------
-# Enable CORS
+# CORS (Cross-Origin Resource Sharing) Setup
 # -----------------------------
+# Allow frontend (React/Vite dev servers) to communicate with this backend
 origins = [
     "http://localhost:3000",   # React dev server (CRA)
     "http://localhost:5173",   # Vite dev server
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
-    "*"  # allow all # (care in production)
+    "*"  # allow all (dev purposes only, do not use in production)
 ]
 
 app.add_middleware(
@@ -36,9 +41,11 @@ app.add_middleware(
     allow_headers=["*"],          
 )
 
+
 # -----------------------------
-# Load multiple CatBoost models
+# Load pretrained CatBoost models
 # -----------------------------
+# Dictionary holds models by task type
 models = {
     "Capped": CatBoostRegressor().load_model("models/capped_model.cbm"),
     "Logbook": CatBoostRegressor().load_model("models/logbook_model.cbm"),
@@ -46,6 +53,7 @@ models = {
     "Repair": CatBoostRegressor().load_model("models/repair_model.cbm"),
 }
 
+# Define required feature order for each model
 MODEL_FEATURES ={
     "Capped": ["Make", "Model", "Year", "FuelType", "EngineSize", "DriveType", "Distance", "Months"],
     "Logbook": ["Make", "Model", "Year", "FuelType", "EngineSize", "Distance", "Months"],
@@ -54,14 +62,15 @@ MODEL_FEATURES ={
 }
 
 # -----------------------------
-# Open processed data
+# Load historical training context data
 # -----------------------------
-
 try:
     historical_df = pd.read_csv("models/training_context.csv")
 except FileNotFoundError:
+    # If no context file exists, use empty DataFrame
     historical_df = pd.DataFrame(columns=["AdjustedPrice"])
 
+# Extract overall price summary (used for global stats)
 price_series = historical_df["AdjustedPrice"]
 price_summary = {
     "min": price_series.min(),
@@ -72,7 +81,7 @@ price_summary = {
 }
 
 # -----------------------------
-# Pydantic models for input
+# Pydantic request models (input validation)
 # -----------------------------
 class CarFeatures(BaseModel):
     TaskName: str
@@ -93,7 +102,7 @@ class PredictRequest(BaseModel):
     features: CarFeatures
 
 # -----------------------------
-# Preprocessing
+# Preprocessing 
 # -----------------------------
 def preprocess(raw_data: CarFeatures, model_name: str):
     data_dict = raw_data.model_dump()
@@ -120,6 +129,10 @@ def preprocess(raw_data: CarFeatures, model_name: str):
     
     return [feature_list]
 
+# -----------------------------
+# Logging functions
+# -----------------------------
+
 def filter_df_by_features(df: pd.DataFrame, raw_data: CarFeatures):
 
     data_dict = raw_data.model_dump()
@@ -142,6 +155,7 @@ def build_summary(df, price_col="AdjustedPrice"):
 
     q1 = prices.quantile(0.25)
     q3 = prices.quantile(0.75)
+    
     return {
         "mean": prices.mean(),
         "median": prices.median(),
@@ -233,8 +247,6 @@ def plot_price_comparison_base64(filtered_df, predicted_price, price_col="Adjust
     plt.close(fig2)
 
     return box_b64, hist_b64
-
-
 
 # -----------------------------
 # Prediction endpoint
