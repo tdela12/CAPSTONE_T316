@@ -172,22 +172,6 @@ def filter_df_by_features(df: pd.DataFrame, raw_data: CarFeatures):
     ]
     return filtered_df
 
-<<<<<<< HEAD
-def build_summary(df, price_col="AdjustedPrice"):
-    prices = pd.to_numeric(df[price_col], errors="coerce").dropna()
-    if prices.empty:
-        return {"mean": 0, "median": 0, "iqr_low": 0, "iqr_high": 0}
-
-    q1 = prices.quantile(0.25)
-    q3 = prices.quantile(0.75)
-    return {
-        "mean": float(prices.mean()),
-        "median": float(prices.median()),
-        "iqr_low": float(q1),
-        "iqr_high": float(q3)
-    }
-=======
->>>>>>> c15e57bfd5f11d8ab447972a41577118d30e18b4
 
 def compare_price(predicted_price, summary):
     iqr_low = summary.get("q1", 0)
