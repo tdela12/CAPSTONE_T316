@@ -1,4 +1,6 @@
-# server.py
+# -----------------------------
+# Imports
+# -----------------------------
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,18 +16,21 @@ import base64
 import json
 import pandas as pd
 
-
+# -----------------------------
+# FastAPI app initialization
+# -----------------------------
 app = FastAPI()
 
 # -----------------------------
-# Enable CORS
+# CORS (Cross-Origin Resource Sharing) Setup
 # -----------------------------
+# Allow frontend (React/Vite dev servers) to communicate with this backend
 origins = [
     "http://localhost:3000",   # React dev server (CRA)
     "http://localhost:5173",   # Vite dev server
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
-    "*"  # allow all # (care in production)
+    "*"  # allow all (dev purposes only, do not use in production)
 ]
 
 app.add_middleware(
@@ -36,9 +41,11 @@ app.add_middleware(
     allow_headers=["*"],          
 )
 
+
 # -----------------------------
-# Load multiple CatBoost models
+# Load pretrained CatBoost models
 # -----------------------------
+# Dictionary holds models by task type
 models = {
     "Capped": CatBoostRegressor().load_model("models/capped_model.cbm"),
     "Logbook": CatBoostRegressor().load_model("models/logbook_model.cbm"),
@@ -46,37 +53,63 @@ models = {
     "Repair": CatBoostRegressor().load_model("models/repair_model.cbm"),
 }
 
+# Define required feature order for each model
 MODEL_FEATURES ={
-    "Capped": ["Make", "Model", "Year", "FuelType", "EngineSize", "DriveType", "Distance", "Months"],
-    "Logbook": ["Make", "Model", "Year", "FuelType", "EngineSize", "Distance", "Months"],
-    "Prescribed": ["Make", "Model", "Year", "FuelType", "EngineSize", "Transmission", "DriveType", "Distance"],
-    "Repair": ["Make", "Model", "FuelType", "EngineSize", "Odometer", "Distance", "Months"],
+    "Capped": ["Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance",],
+    "Logbook": ["Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance", "Months"],
+    "Prescribed": ["Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance",],
+    "Repair": ["TaskName", "Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance",],
 }
 
 # -----------------------------
-# Open processed data
+# Load historical training context data
 # -----------------------------
+def load_csv(file_path):
+    try:
+        return pd.read_csv(file_path)
+    except FileNotFoundError:
+        return pd.DataFrame(columns=["AdjustedPrice"])
 
-try:
-    historical_df = pd.read_csv("models/training_context.csv")
-except FileNotFoundError:
-    historical_df = pd.DataFrame(columns=["AdjustedPrice"])
+historical_sets = {
+    "Capped": load_csv("data/preprocessed_capped_data.csv"),
+    "Logbook": load_csv("data/preprocessed_log_data.csv"),
+    "Prescribed": load_csv("data/preprocessed_prescribed_data.csv"),
+    "Repair": load_csv("data/preprocessed_repair_data.csv"),
+}
 
-price_series = historical_df["AdjustedPrice"]
-price_summary = {
-    "min": price_series.min(),
-    "q1": price_series.quantile(0.25),
-    "median": price_series.median(),
-    "q3": price_series.quantile(0.75),
-    "max": price_series.max()
+def build_price_summary(df, price_col="AdjustedPrice"):
+    # Make sure the column exists
+    if price_col not in df.columns:
+        return {"min": 0.0, "q1": 0.0, "median": 0.0, "q3": 0.0, "max": 0.0}
+
+    # Drop missing values
+    price_series = df[price_col].dropna()
+
+    # If no valid data, return default zeros
+    if price_series.empty:
+        return {"min": 0.0, "q1": 0.0, "median": 0.0, "q3": 0.0, "max": 0.0}
+
+    # Compute summary
+    return {
+        "min": float(price_series.min()),
+        "q1": float(price_series.quantile(0.25)),
+        "median": float(price_series.median()),
+        "q3": float(price_series.quantile(0.75)),
+        "max": float(price_series.max()),
+    }
+
+
+# Extract overall price summary (used for global stats)
+price_summaries = {
+    name: build_price_summary(df)
+    for name, df in historical_sets.items()
 }
 
 # -----------------------------
-# Pydantic models for input
+# Pydantic request models (input validation)
 # -----------------------------
 class CarFeatures(BaseModel):
     TaskName: str
-    Odometer: Optional[float] = None
     Make: str
     Model: str
     Year: Optional[int] = None
@@ -86,14 +119,14 @@ class CarFeatures(BaseModel):
     DriveType: Optional[str] = None 
     Distance: Optional[float] = None
     Months: Optional[float] = None
-    AdjustedPrice: float
+    AdjustedPrice: Optional[float] = None
 
 class PredictRequest(BaseModel):
     model_name: str
     features: CarFeatures
 
 # -----------------------------
-# Preprocessing
+# Preprocessing 
 # -----------------------------
 def preprocess(raw_data: CarFeatures, model_name: str):
     data_dict = raw_data.model_dump()
@@ -120,6 +153,10 @@ def preprocess(raw_data: CarFeatures, model_name: str):
     
     return [feature_list]
 
+# -----------------------------
+# Logging functions
+# -----------------------------
+
 def filter_df_by_features(df: pd.DataFrame, raw_data: CarFeatures):
 
     data_dict = raw_data.model_dump()
@@ -135,6 +172,7 @@ def filter_df_by_features(df: pd.DataFrame, raw_data: CarFeatures):
     ]
     return filtered_df
 
+<<<<<<< HEAD
 def build_summary(df, price_col="AdjustedPrice"):
     prices = pd.to_numeric(df[price_col], errors="coerce").dropna()
     if prices.empty:
@@ -148,15 +186,31 @@ def build_summary(df, price_col="AdjustedPrice"):
         "iqr_low": float(q1),
         "iqr_high": float(q3)
     }
+=======
+>>>>>>> c15e57bfd5f11d8ab447972a41577118d30e18b4
 
 def compare_price(predicted_price, summary):
-    iqr_low = summary.get("iqr_low", 0)
-    iqr_high = summary.get("iqr_high", 0)
+    iqr_low = summary.get("q1", 0)
+    iqr_high = summary.get("q3", 0)
     mean = summary.get("mean", 0)
     median = summary.get("median", 0)
 
+    # Check if prediction falls inside IQR
     in_iqr = iqr_low <= predicted_price <= iqr_high
-    z = (predicted_price - mean) / ((iqr_high - iqr_low) / 1.349) if (iqr_high - iqr_low) != 0 else 0
+
+    # Robust z-score (centered at median, scaled by IQR)
+    z_from_median = (
+        (predicted_price - median) / ((iqr_high - iqr_low) / 1.349)
+        if (iqr_high - iqr_low) != 0 else 0
+    )
+
+    # Confidence classification
+    if in_iqr:
+        confidence = "high"
+    elif summary.get("min", 0) <= predicted_price <= summary.get("max", 0):
+        confidence = "medium"
+    else:
+        confidence = "low"
 
     return {
         "predicted_price": predicted_price,
@@ -165,7 +219,8 @@ def compare_price(predicted_price, summary):
         "iqr_low": iqr_low,
         "iqr_high": iqr_high,
         "within_iqr": in_iqr,
-        "z_from_mean": z
+        "z_from_median": z_from_median,
+        "confidence": confidence
     }
 
 
@@ -234,7 +289,32 @@ def plot_price_comparison_base64(filtered_df, predicted_price, price_col="Adjust
 
     return box_b64, hist_b64
 
+def plot_distance_month_comparison(filtered_df, predicted_price, month_value, distance_value):
+    plots = {}
 
+    # ----- Scatter: Months vs Price -----
+    fig1, ax1 = plt.subplots(figsize=(6,4))
+    ax1.scatter(filtered_df["Months"], filtered_df["AdjustedPrice"], alpha=0.6, label="Historical")
+    ax1.scatter([month_value], [predicted_price], color="red", s=100, label="Predicted", zorder=5)
+    ax1.set_xlabel("Months")
+    ax1.set_ylabel("Price")
+    ax1.set_title("Price vs Months")
+    ax1.legend()
+    plots["month_vs_price"] = fig_to_base64(fig1)
+    plt.close(fig1)
+
+    # ----- Scatter: Distance vs Price -----
+    fig2, ax2 = plt.subplots(figsize=(6,4))
+    ax2.scatter(filtered_df["Distance"], filtered_df["AdjustedPrice"], alpha=0.6, label="Historical")
+    ax2.scatter([distance_value], [predicted_price], color="red", s=100, label="Predicted", zorder=5)
+    ax2.set_xlabel("Distance")
+    ax2.set_ylabel("Price")
+    ax2.set_title("Price vs Distance")
+    ax2.legend()
+    plots["distance_vs_price"] = fig_to_base64(fig2)
+    plt.close(fig2)
+
+    return plots
 
 # -----------------------------
 # Prediction endpoint
@@ -245,38 +325,46 @@ def predict(req: PredictRequest):
         return {"error": f"Unknown model {req.model_name}"}
     
     model = models[req.model_name]
-
-    # Preprocess features
     processed = preprocess(req.features, req.model_name)
+    prediction = float(model.predict(processed)[0])
+    shap_b64 = generate_shap_plot(model, processed, MODEL_FEATURES[req.model_name])
 
-    # Make prediction
-    prediction = model.predict(processed)
-    prediction = float(prediction[0])
+    hist_df = historical_sets.get(req.model_name, pd.DataFrame(columns=["AdjustedPrice"]))
+    filtered = filter_df_by_features(hist_df, req.features)
 
-    shap_plot = generate_shap_plot(model, processed, MODEL_FEATURES[req.model_name])
-
-    filtered = filter_df_by_features(historical_df, req.features)
+    month_distance_plots = {}
+    if req.model_name in ["Capped", "Logbook"]:
+        month_distance_plots = plot_distance_month_comparison(
+            filtered,
+            predicted_price=prediction,
+            month_value=req.features.Months,
+            distance_value=req.features.Distance
+        )
 
     if filtered.empty:
         return {
             "model": req.model_name,
             "prediction": prediction,
-            "shap_plot": shap_plot,
+            "plots": {
+                "shap_png": shap_b64,
+                **month_distance_plots
+            },
             "message": "No historical rows match these features"
         }
-    summary = build_summary(filtered, price_col="AdjustedPrice")
-    comparison = compare_price(prediction, summary)
 
+    summary = build_price_summary(filtered, price_col="AdjustedPrice")
+    comparison = compare_price(prediction, summary)
     box_b64, hist_b64 = plot_price_comparison_base64(filtered, prediction, price_col="AdjustedPrice")
 
     return {
         "model": req.model_name,
         "prediction": prediction,
-        "shap_plot": shap_plot,          
         "historical_summary": summary,   
         "comparison": comparison,        
         "plots": {
             "boxplot_png": box_b64,
-            "histogram_png": hist_b64
+            "histogram_png": hist_b64,
+            "shap_png": shap_b64,
+            **month_distance_plots
         }
     }
