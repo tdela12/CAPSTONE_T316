@@ -55,10 +55,10 @@ models = {
 
 # Define required feature order for each model
 MODEL_FEATURES ={
-    "Capped": ["Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance",],
-    "Logbook": ["Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance", "Months"],
-    "Prescribed": ["Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance",],
-    "Repair": ["TaskName", "Make", "Model", "Year", "FuelType", "Transmission", "EngineSize", "DriveType", "Distance",],
+    "Capped": ["Make", "Model", "Year", "FuelType", "EngineSize", "Transmission", "DriveType", "Distance",],
+    "Logbook": ["Make", "Model", "Year", "FuelType",  "EngineSize", "Transmission", "DriveType", "Distance", "Months"],
+    "Prescribed": ["Make", "Model", "Year", "FuelType", "EngineSize", "Transmission",  "DriveType", "Distance",],
+    "Repair": ["TaskName", "Make", "Model", "Year", "FuelType", "EngineSize", "Transmission",  "DriveType", "Distance",],
 }
 
 # -----------------------------
