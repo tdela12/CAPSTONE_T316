@@ -135,7 +135,7 @@ def preprocess(raw_data: CarFeatures, model_name: str):
     drop_features = ["AdjustedPrice", "Odometer"]
     cleaned_data = {k: v for k, v in data_dict.items() if k not in drop_features}
     
-    for cat in ["TaskName", "DriveType", "Make", "Model", "FuelType"]:
+    for cat in ["TaskName", "DriveType", "Make", "Model", "FuelType", "Transmission"]:
         value = cleaned_data.get(cat)
         if value is None:        
             cleaned_data[cat] = "missing"
@@ -210,7 +210,7 @@ def compare_price(predicted_price, summary):
 
 def generate_shap_plot(model, processed, feature_names):
     # Dynamically identify categorical features
-    categorical_set = {"TaskName", "DriveType", "Make", "Model", "FuelType"}
+    categorical_set = {"TaskName", "DriveType", "Make", "Model", "FuelType", "Transmission"}
     cat_features = [f for f in feature_names if f in categorical_set]
     # Calculate SHAP values
     shap_values = model.get_feature_importance(
