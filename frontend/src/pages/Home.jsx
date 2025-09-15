@@ -17,10 +17,33 @@ export default function Home() {
   const [months, setMonths] = useState(0.0)
   const [adjustedPrice, setAdjustedPrice] = useState(0.0)
   const { data, error, predict } = usePredict("");
-
+  const [errors, setErrors] = useState({})
   const handlePredict = (event) => {
     event.preventDefault();
-    predict(taskType, taskName, odometer, make, model, year, fuelType, engineSize, transmission, driveType, distance, months, adjustedPrice)
+
+    const numericFields = {
+    odometer,
+    engineSize,
+    distance,
+    months,
+    adjustedPrice,
+  };
+
+  let newErr = {};
+
+  for (const [field, value] of Object.entries(numericFields)) {
+    if (value === '' || isNaN(value)) {
+      newErr[field] = `Please enter a valid number for ${field}.`;
+    }
+  }
+
+  if (Object.keys(newErr).length > 0) {
+    setErrors(newErr);
+    return;
+  } 
+
+  setErrors({});
+  predict(taskType, taskName, odometer, make, model, year, fuelType, engineSize, transmission, driveType, distance, months, adjustedPrice)
   }
 
   return (
@@ -84,6 +107,7 @@ export default function Home() {
               setOdometer(event.target.value);
             }}
           />
+          {errors.odometer && <p style={{ color: 'red' }}>{errors.odometer}</p>}                                    
 
           {/* year Input */}
           <label htmlFor="year">Enter year feature value:</label>
@@ -142,6 +166,8 @@ export default function Home() {
               setEngineSize(event.target.value);
             }}
           />
+          {errors.engineSize && <p style={{ color: 'red' }}>{errors.engineSize}</p>}
+
 
           {/* driveType Dropdown */}
           <label htmlFor="driveType">Select driveType feature value:</label>
@@ -172,6 +198,7 @@ export default function Home() {
               setDistance(event.target.value);
             }}
           />
+          {errors.distance && <p style={{ color: 'red' }}>{errors.distance}</p>}
 
           {/* months Input */}
           <label htmlFor="months">Enter months feature value:</label>
@@ -185,6 +212,8 @@ export default function Home() {
               setMonths(event.target.value);
             }}
           />
+          {errors.months && <p style={{ color: 'red' }}>{errors.months}</p>}
+
 
           {/* adjustedPrice Input */}
           <label htmlFor="adjustedPrice">Enter adjustedPrice feature value:</label>
@@ -198,6 +227,7 @@ export default function Home() {
               setAdjustedPrice(event.target.value);
             }}
           />
+          {errors.adjustedPrice && <p style={{ color: 'red' }}>{errors.adjustedPrice}</p>}
 
           <button type="submit" id="predictBtn">Predict</button>
         </form>
