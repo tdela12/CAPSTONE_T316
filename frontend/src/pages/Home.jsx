@@ -232,9 +232,9 @@ export default function Home() {
 
                   {/* Plots */}
                   <h4>SHAP Plot</h4>
-                  {data.shap_plot && (
+                  {data.plots?.shap_png && (
                     <img
-                      src={`data:image/png;base64,${data.shap_plot}`}
+                      src={`data:image/png;base64,${data.plots.shap_png}`}
                       alt="SHAP"
                       style={{ maxWidth: "600px" }}
                     />
@@ -261,12 +261,33 @@ export default function Home() {
                       </div>
                     )}
                   </div>
+                  <div style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
+                    {data.plots?.distance_vs_price && (
+                      <div style={{ flex: 1 }}>
+                        <h4>Price vs Distance</h4>
+                        <img
+                          src={`data:image/png;base64,${data.plots.distance_vs_price}`}
+                          alt="distance_vs_price"
+                          style={{ width: "100%" }}
+                        />
+                      </div>
+                    )}
+                    
+                    {data.plots?.month_vs_price && (
+                      <div style={{ flex: 1 }}>
+                        <h4>Price vs Months</h4>
+                        <img
+                          src={`data:image/png;base64,${data.plots.month_vs_price}`}
+                          alt="distance_vs_price"
+                          style={{ width: "100%" }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </>
           )}
-
-
         </div>
 
       </div>
