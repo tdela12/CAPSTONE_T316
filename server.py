@@ -3,7 +3,14 @@
 # -----------------------------
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.utils import get_openapi
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi import HTTPException, status
+from fastapi.responses import JSONResponse
+from fastapi.requests import Request
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel, Field
 from typing import Optional
 from catboost import CatBoostRegressor, Pool
 import numpy as np
@@ -16,10 +23,62 @@ import base64
 import json
 import pandas as pd
 
+
 # -----------------------------
 # FastAPI app initialization
 # -----------------------------
-app = FastAPI()
+app = FastAPI(
+    title="AutoGuru — Service Price Prediction API",
+    description=(
+        "Predict prices for capped, logbook, prescribed and repair services. "
+        "Interactive docs (Swagger) are customized and available at /docs."
+    ),
+    version="1.0.0",
+    docs_url=None,    # disable builtin swagger docs, refer to custom /docs below
+    redoc_url=None
+)
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "code": exc.status_code,
+            "message": exc.detail,
+            "details": getattr(exc, "details", None)
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "message": "Input validation error",
+            "details": exc.errors()
+        }
+    )
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="AutoGuru — Service Price Prediction API",
+        version="1.0.0",
+        description="Predict prices for capped, logbook, prescribed and repair services. Interactive docs (Swagger) are available at /docs.",
+        routes=app.routes,
+    )
+    openapi_schema["openapi"] = "3.0.3"
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
+
+# -----------------------------
+# Serve static assets (CSS/logo) from ./static
+# -----------------------------
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # -----------------------------
 # CORS (Cross-Origin Resource Sharing) Setup
@@ -109,21 +168,52 @@ price_summaries = {
 # Pydantic request models (input validation)
 # -----------------------------
 class CarFeatures(BaseModel):
-    TaskName: str
-    Make: str
-    Model: str
-    Year: Optional[int] = None
-    FuelType: Optional[str] = None
-    Transmission: Optional[str] = None
-    EngineSize: Optional[float] = None
-    DriveType: Optional[str] = None 
-    Distance: Optional[float] = None
-    Months: Optional[float] = None
-    AdjustedPrice: Optional[float] = None
+    TaskName: str = Field(..., description="Name of the task/service (e.g., Wheel alignment, Brake service)")
+    Make: str = Field(..., description="Vehicle manufacturer (e.g., Toyota)")
+    Model: str = Field(..., description="Vehicle model (e.g., Corolla)")
+    Year: Optional[int] = Field(None, description="Year of manufacture")
+    FuelType: Optional[str] = Field(None, description="Fuel type (e.g., Petrol, Diesel, Hybrid)")
+    Transmission: Optional[str] = Field(None, description="Transmission type (e.g., Auto, Manual)")
+    EngineSize: Optional[float] = Field(None, description="Engine displacement in litres")
+    DriveType: Optional[str] = Field(None, description="Drive type (e.g., FWD, RWD, AWD)")
+    Distance: Optional[float] = Field(None, description="Vehicle odometer reading (km)")
+    Months: Optional[float] = Field(None, description="Months since service or warranty (if applicable)")
+    AdjustedPrice: Optional[float] = Field(None, description="Historical adjusted price (optional)")
+
 
 class PredictRequest(BaseModel):
-    model_name: str
-    features: CarFeatures
+    model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
+    features: CarFeatures = Field(..., description="Vehicle / Task feature object")
+
+class PlotOutputs(BaseModel):
+    boxplot_png: Optional[str] = Field(None, description="Base64 PNG of boxplot (if applicable)")
+    histogram_png: Optional[str] = Field(None, description="Base64 PNG of histogram (if applicable)")
+    shap_png: Optional[str] = Field(None, description="Base64 PNG of SHAP waterfall plot")
+    month_vs_price: Optional[str] = Field(None, description="Base64 PNG of Months vs Price scatter")
+    distance_vs_price: Optional[str] = Field(None, description="Base64 PNG of Distance vs Price scatter")
+
+class ComparisonResult(BaseModel):
+    predicted_price: float
+    mean: Optional[float]
+    median: Optional[float]
+    iqr_low: Optional[float]
+    iqr_high: Optional[float]
+    within_iqr: bool
+    z_from_median: float
+    confidence: str
+
+class PredictResponse(BaseModel):
+    model: str
+    prediction: float
+    historical_summary: Optional[dict[str, float]] = None
+    comparison: Optional[ComparisonResult] = None
+    plots: PlotOutputs
+    message: Optional[str] = None
+
+class ErrorResponse(BaseModel):
+    code: int
+    message: str
+    details: Optional[dict] = None
 
 # -----------------------------
 # Preprocessing 
@@ -158,20 +248,26 @@ def preprocess(raw_data: CarFeatures, model_name: str):
 # -----------------------------
 
 def filter_df_by_features(df: pd.DataFrame, raw_data: CarFeatures):
-
     data_dict = raw_data.model_dump()
-
     make = data_dict.get("Make")
     model = data_dict.get("Model")
     year = data_dict.get("Year")
 
-    filtered_df = df[
-        (df["Make"] == make) &
-        (df["Model"] == model) &
-        (df["Year"] == year)
-    ]
-    return filtered_df
+    # Only filter on columns that exist
+    conditions = []
+    if "Make" in df.columns:
+        conditions.append(df["Make"] == make)
+    if "Model" in df.columns:
+        conditions.append(df["Model"] == model)
+    if "Year" in df.columns:
+        conditions.append(df["Year"] == year)
 
+    if conditions:
+        filtered_df = df[np.logical_and.reduce(conditions)]
+    else:
+        filtered_df = pd.DataFrame()  # empty if no columns match
+
+    return filtered_df
 
 def compare_price(predicted_price, summary):
     iqr_low = summary.get("q1", 0)
@@ -277,78 +373,137 @@ def plot_distance_month_comparison(filtered_df, predicted_price, month_value, di
     plots = {}
 
     # ----- Scatter: Months vs Price -----
-    fig1, ax1 = plt.subplots(figsize=(6,4))
-    ax1.scatter(filtered_df["Months"], filtered_df["AdjustedPrice"], alpha=0.6, label="Historical")
-    ax1.scatter([month_value], [predicted_price], color="red", s=100, label="Predicted", zorder=5)
-    ax1.set_xlabel("Months")
-    ax1.set_ylabel("Price")
-    ax1.set_title("Price vs Months")
-    ax1.legend()
-    plots["month_vs_price"] = fig_to_base64(fig1)
-    plt.close(fig1)
-
+    if "Months" in filtered_df.columns and "AdjustedPrice" in filtered_df.columns:
+        fig1, ax1 = plt.subplots(figsize=(6,4))
+        ax1.scatter(filtered_df["Months"], filtered_df["AdjustedPrice"], alpha=0.6, label="Historical")
+        if month_value is not None:
+            ax1.scatter([month_value], [predicted_price], color="red", s=100, label="Predicted", zorder=5)
+        ax1.set_xlabel("Months")
+        ax1.set_ylabel("Price")
+        ax1.set_title("Price vs Months")
+        ax1.legend()
+        plots["month_vs_price"] = fig_to_base64(fig1)
+        plt.close(fig1)
+    
     # ----- Scatter: Distance vs Price -----
-    fig2, ax2 = plt.subplots(figsize=(6,4))
-    ax2.scatter(filtered_df["Distance"], filtered_df["AdjustedPrice"], alpha=0.6, label="Historical")
-    ax2.scatter([distance_value], [predicted_price], color="red", s=100, label="Predicted", zorder=5)
-    ax2.set_xlabel("Distance")
-    ax2.set_ylabel("Price")
-    ax2.set_title("Price vs Distance")
-    ax2.legend()
-    plots["distance_vs_price"] = fig_to_base64(fig2)
-    plt.close(fig2)
+    if "Distance" in filtered_df.columns and "AdjustedPrice" in filtered_df.columns:
+        fig2, ax2 = plt.subplots(figsize=(6,4))
+        ax2.scatter(filtered_df["Distance"], filtered_df["AdjustedPrice"], alpha=0.6, label="Historical")
+        if distance_value is not None:
+            ax2.scatter([distance_value], [predicted_price], color="red", s=100, label="Predicted", zorder=5)
+        ax2.set_xlabel("Distance")
+        ax2.set_ylabel("Price")
+        ax2.set_title("Price vs Distance")
+        ax2.legend()
+        plots["distance_vs_price"] = fig_to_base64(fig2)
+        plt.close(fig2)
 
     return plots
-
 # -----------------------------
 # Prediction endpoint
 # -----------------------------
-@app.post("/predict")
+@app.post("/predict",
+    response_model=PredictResponse,
+    summary="Predict a service price",
+    tags=["Prediction"],
+responses={
+    200: {"description": "Prediction successful", "model": PredictResponse},
+    400: {"description": "Invalid request or unknown model", "model": ErrorResponse},
+    422: {"description": "Validation error in input data", "model": ErrorResponse},
+    500: {"description": "Internal server error", "model": ErrorResponse},
+})
+
 def predict(req: PredictRequest):
     if req.model_name not in models:
-        return {"error": f"Unknown model {req.model_name}"}
-    
-    model = models[req.model_name]
-    processed = preprocess(req.features, req.model_name)
-    prediction = float(model.predict(processed)[0])
-    shap_b64 = generate_shap_plot(model, processed, MODEL_FEATURES[req.model_name])
-
-    hist_df = historical_sets.get(req.model_name, pd.DataFrame(columns=["AdjustedPrice"]))
-    filtered = filter_df_by_features(hist_df, req.features)
-
-    month_distance_plots = {}
-    if req.model_name in ["Capped", "Logbook"]:
-        month_distance_plots = plot_distance_month_comparison(
-            filtered,
-            predicted_price=prediction,
-            month_value=req.features.Months,
-            distance_value=req.features.Distance
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown model {req.model_name}"
         )
 
-    if filtered.empty:
+    try:
+        model = models[req.model_name]
+        processed = preprocess(req.features, req.model_name)
+        prediction = float(model.predict(processed)[0])
+        shap_b64 = generate_shap_plot(model, processed, MODEL_FEATURES[req.model_name])
+
+        hist_df = historical_sets.get(req.model_name, pd.DataFrame(columns=["AdjustedPrice"]))
+        filtered = filter_df_by_features(hist_df, req.features)
+
+        month_distance_plots = {}
+        if req.model_name in ["Capped", "Logbook"]:
+            month_distance_plots = plot_distance_month_comparison(
+                filtered,
+                predicted_price=prediction,
+                month_value=req.features.Months,
+                distance_value=req.features.Distance
+            )
+
+        if filtered.empty:
+            return {
+                "model": req.model_name,
+                "prediction": prediction,
+                "plots": {
+                    "shap_png": shap_b64,
+                    **month_distance_plots
+                },
+                "message": "No historical rows match these features"
+            }
+
+        summary = build_price_summary(filtered, price_col="AdjustedPrice")
+        comparison = compare_price(prediction, summary)
+        box_b64, hist_b64 = plot_price_comparison_base64(filtered, prediction, price_col="AdjustedPrice")
+
         return {
             "model": req.model_name,
             "prediction": prediction,
+            "historical_summary": summary,   
+            "comparison": comparison,        
             "plots": {
+                "boxplot_png": box_b64,
+                "histogram_png": hist_b64,
                 "shap_png": shap_b64,
                 **month_distance_plots
-            },
-            "message": "No historical rows match these features"
+            }
         }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
 
-    summary = build_price_summary(filtered, price_col="AdjustedPrice")
-    comparison = compare_price(prediction, summary)
-    box_b64, hist_b64 = plot_price_comparison_base64(filtered, prediction, price_col="AdjustedPrice")
 
-    return {
-        "model": req.model_name,
-        "prediction": prediction,
-        "historical_summary": summary,   
-        "comparison": comparison,        
-        "plots": {
-            "boxplot_png": box_b64,
-            "histogram_png": hist_b64,
-            "shap_png": shap_b64,
-            **month_distance_plots
-        }
-    }
+# -----------------------------
+# Custom docs endpoints
+# -----------------------------
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    """
+    Serve a customized Swagger UI:
+    - uses our custom CSS at /static/custom-swagger.css
+    - uses the swagger UI bundle via CDN
+    - favicon/logo delivered from /static/logo.png
+    """
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title="AutoGuru API Docs",
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js",
+        swagger_css_url="/static/custom-swagger.css",
+        swagger_favicon_url="/static/logo.png"
+    )
+
+@app.get("/redoc", include_in_schema=False)
+async def redoc_html():
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title="AutoGuru API (ReDoc)",
+        redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"
+    )
+
+@app.get("/openapi.json", include_in_schema=False)
+async def get_open_api_endpoint():
+    return JSONResponse(app.openapi())
