@@ -45,10 +45,12 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content={
             "code": exc.status_code,
             "message": exc.detail,
-            "details": getattr(exc, "details", None)
+            "details": {
+                "path": str(request.url),
+                "method": request.method
+            }
         }
     )
-
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
@@ -214,6 +216,56 @@ class ErrorResponse(BaseModel):
     code: int
     message: str
     details: Optional[dict] = None
+
+
+# Standardized error responses for reuse
+ERROR_RESPONSES = {
+    400: {
+        "description": "Invalid request or unknown model",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": {
+                    "code": 400,
+                    "message": "Unknown model: FooBar",
+                    "details": {"model_name": "FooBar"}
+                }
+            }
+        }
+    },
+    422: {
+        "description": "Validation error in input data",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": {
+                    "code": 422,
+                    "message": "Input validation error",
+                    "details": [
+                        {
+                            "loc": ["body", "features", "Months"],
+                            "msg": "field required",
+                            "type": "value_error.missing"
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    500: {
+        "description": "Internal server error",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": {
+                    "code": 500,
+                    "message": "An unexpected error occurred",
+                    "details": {"trace_id": "123e4567-e89b-12d3-a456-426614174000"}
+                }
+            }
+        }
+    }
+}
 
 # -----------------------------
 # Preprocessing 
@@ -408,9 +460,7 @@ def plot_distance_month_comparison(filtered_df, predicted_price, month_value, di
     tags=["Prediction"],
 responses={
     200: {"description": "Prediction successful", "model": PredictResponse},
-    400: {"description": "Invalid request or unknown model", "model": ErrorResponse},
-    422: {"description": "Validation error in input data", "model": ErrorResponse},
-    500: {"description": "Internal server error", "model": ErrorResponse},
+    **ERROR_RESPONSES
 })
 
 def predict(req: PredictRequest):
