@@ -30,6 +30,13 @@ export default function ResultsPage() {
                 src={`data:image/png;base64,${data.plots.shap_png}`} 
                 ></img>
             </div>)}
+            {data.plots.boxplot_png && (
+            <div>
+              <h4>Historical Price Distribution</h4>
+              <img
+                src={`data:image/png;base64,${data.plots.boxplot_png}`} 
+                ></img>
+            </div>)}
           {data.message && <p>{data.message}</p>}
           <pre>{JSON.stringify(data, null, 2)}</pre>
           <button onClick={() => navigate("/")}>Make Another Prediction</button>

@@ -4,55 +4,59 @@ import { usePredict } from "../api";
 import { taskFeatures } from "../../config/features";
 import { featureMeta } from "../../config/featureMeta";
 
-
 export default function DataEntry() {
   const [taskType, setTaskType] = useState("");
   const [features, setFeatures] = useState({
-    make: "",
-    model: "",
-    taskName: "",
-    odometer: "",
-    year: "",
-    engineSize: "",
-    distance: "",
-    months: "",
-    adjustedPrice: "",
-    fuelType: "",
-    transmission: "",
-    driveType: "",
+    Make: "",
+    Model: "",
+    TaskName: "",
+    Odometer: "",
+    Year: "",
+    EngineSize: "",
+    Distance: "",
+    Months: "",
+    AdjustedPrice: "",
+    FuelType: "",
+    Transmission: "",
+    DriveType: "",
   });
 
   const { predict } = usePredict();
   const navigate = useNavigate();
 
+  // Update feature value
   const handleChange = (key, value) => {
     setFeatures((prev) => ({ ...prev, [key]: value }));
   };
 
+  // Handle form submission
   const handlePredict = async (e) => {
-    e.preventDefault();
-    const result = await predict(
-      taskType,
-      features.taskName,
-      features.odometer,
-      features.make,
-      features.model,
-      features.year,
-      features.fuelType,
-      features.engineSize,
-      features.transmission,
-      features.driveType,
-      features.distance,
-      features.months,
-      features.adjustedPrice
-    );
+  e.preventDefault();
 
-    if (result) {
-      navigate("/Results", { state: { data: result } });
-    } else {
-      navigate("/Results", { state: { error: "Prediction failed" } });
+  if (!taskType) return alert("Please select a task type");
+
+  // Build payload with all features, fill unused ones with null
+  const payloadFeatures = {};
+  Object.keys(features).forEach((key) => {
+    let value = features[key] || null;
+
+    // Convert numeric fields
+    if (["odometer", "year", "engineSize", "distance", "months", "adjustedPrice"].includes(key)) {
+      value = value !== null ? Number(value) : null;
     }
-  };
+
+    payloadFeatures[key] = value;
+  });
+
+  const result = await predict(taskType, payloadFeatures);
+
+  if (result) {
+    navigate("/Results", { state: { data: result } });
+  } else {
+    navigate("/Results", { state: { error: "Prediction failed" } });
+  }
+};
+
 
   return (
     <div className="MainPage">
@@ -72,9 +76,11 @@ export default function DataEntry() {
           ))}
         </select>
 
-        {/* Conditionally render features */}
+        {/* Render relevant fields dynamically */}
         {taskFeatures[taskType]?.map((field) => {
           const meta = featureMeta[field];
+
+          if (!meta) return null; // safety check
 
           if (meta.type === "select") {
             return (
