@@ -1,14 +1,10 @@
 import { useState } from "react";
 
-export function usePredict(
-  taskType, taskName, odometer, make, model, year,
-  fuelType, engineSize, transmission, driveType,
-  distance, months, adjustedPrice
-) {
+export function usePredict() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
-  const predict = (
+  const predict = async (
     taskType, taskName, odometer, make, model, year,
     fuelType, engineSize, transmission, driveType,
     distance, months, adjustedPrice
@@ -32,21 +28,30 @@ export function usePredict(
       },
     };
 
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    })
-      .then((res) => res.json())
-      .then((resData) => {
-        console.log("API response:", resData);
-        setData(resData);     // store full API response
-        setError(null);
-      })
-      .catch((err) => {
-        console.error("Error fetching prediction:", err);
-        setError("Error fetching prediction");
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+
+      const resData = await res.json();
+      console.log("API response:", resData);
+
+      setData(resData);
+      setError(null);
+
+      return resData;
+    } catch (err) {
+      console.error("Error fetching prediction:", err);
+      setError("Error fetching prediction");
+      setData(null);
+      return null; 
+    }
   };
 
   return { data, error, predict };
