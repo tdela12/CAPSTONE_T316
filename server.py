@@ -191,6 +191,8 @@ class HistoricalRequest(BaseModel):
     model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
     features: CarFeatures = Field(..., description="Vehicle / Task feature object")
     prediction: float = Field(..., description="Predicted price from /predict endpoint")
+    months: Optional[float] = Field(None, description="Months of service (if applicable)")
+    distance: Optional[float] = Field(None, description="Vehicle odometer reading (km)")
 
 class PredictPlotOutputs(BaseModel):
     shap_png: Optional[str] = Field(None, description="Base64 PNG of SHAP waterfall plot")
@@ -198,8 +200,8 @@ class PredictPlotOutputs(BaseModel):
 class HistoricalPlotOutputs(BaseModel):
     boxplot_png: Optional[str] = Field(None, description="Base64 PNG of boxplot (if applicable)")
     histogram_png: Optional[str] = Field(None, description="Base64 PNG of histogram (if applicable)")
-    month_vs_price: Optional[str] = Field(None, description="Base64 PNG of Months vs Price scatter")
-    distance_vs_price: Optional[str] = Field(None, description="Base64 PNG of Distance vs Price scatter")
+    month_vs_price_png: Optional[str] = Field(None, description="Base64 PNG of Months vs Price scatter")
+    distance_vs_price_png: Optional[str] = Field(None, description="Base64 PNG of Distance vs Price scatter")
 
 class ComparisonResult(BaseModel):
     predicted_price: float
@@ -467,7 +469,7 @@ def plot_distance_month_comparison(filtered_df, predicted_price, month_value, di
         ax1.set_ylabel("Price")
         ax1.set_title("Price vs Months")
         ax1.legend()
-        plots["month_vs_price"] = fig_to_base64(fig1)
+        plots["month_vs_price_png"] = fig_to_base64(fig1)
         plt.close(fig1)
     
     # ----- Scatter: Distance vs Price -----
@@ -480,7 +482,7 @@ def plot_distance_month_comparison(filtered_df, predicted_price, month_value, di
         ax2.set_ylabel("Price")
         ax2.set_title("Price vs Distance")
         ax2.legend()
-        plots["distance_vs_price"] = fig_to_base64(fig2)
+        plots["distance_vs_price_png"] = fig_to_base64(fig2)
         plt.close(fig2)
 
     return plots
@@ -542,8 +544,8 @@ def get_historical_data(req: HistoricalRequest):
         month_distance_plots = plot_distance_month_comparison(
             filtered,
             predicted_price=req.prediction,
-            month_value=req.features.Months,
-            distance_value=req.features.Distance
+            month_value=req.months,
+            distance_value=req.distance
         )
 
     if filtered.empty:

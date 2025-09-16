@@ -38,7 +38,7 @@ export const useHistoricalSummary = () => {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
-  const fetchHistorical = async (taskType, features, prediction) => {
+  const fetchHistorical = async (taskType, features, prediction, months, distance) => {
     try {
       const res = await fetch("http://127.0.0.1:8000/historical_summary", {
         method: "POST",
@@ -46,7 +46,9 @@ export const useHistoricalSummary = () => {
         body: JSON.stringify({
           model_name: taskType,
           features: features,
-          prediction: prediction
+          prediction: prediction,
+          months: months,
+          distance: distance
         }),
       });
 

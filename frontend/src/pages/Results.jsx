@@ -78,7 +78,7 @@ export default function ResultsPage() {
                         <button
                             onClick={() => {
                                 if (data.prediction != null) {
-                                    fetchHistorical(data.model, selectedFeatures, data.prediction);
+                                    fetchHistorical(data.model, selectedFeatures, data.prediction, data.features.Months, data.features.Distance);
                                 } else {
                                     console.error("Prediction is missing, cannot fetch historical data.");
                                 }
@@ -118,6 +118,18 @@ export default function ResultsPage() {
                             {historicalData.plots?.histogram_png && (
                                 <img
                                     src={`data:image/png;base64,${historicalData.plots.histogram_png}`}
+                                    alt="Histogram"
+                                />
+                            )}
+                            {historicalData.plots?.distance_vs_price_png && (
+                                <img
+                                    src={`data:image/png;base64,${historicalData.plots.distance_vs_price_png}`}
+                                    alt="Histogram"
+                                />
+                            )}
+                            {historicalData.plots?.month_vs_price_png && (
+                                <img
+                                    src={`data:image/png;base64,${historicalData.plots.month_vs_price_png}`}
                                     alt="Histogram"
                                 />
                             )}
