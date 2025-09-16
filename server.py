@@ -170,7 +170,7 @@ price_summaries = {
 # Pydantic request models (input validation)
 # -----------------------------
 class CarFeatures(BaseModel):
-    TaskName: str = Field(..., description="Name of the task/service (e.g., Wheel alignment, Brake service)")
+    TaskName: Optional[str] = Field(..., description="Name of the task/service (e.g., Wheel alignment, Brake service)")
     Make: str = Field(..., description="Vehicle manufacturer (e.g., Toyota)")
     Model: str = Field(..., description="Vehicle model (e.g., Corolla)")
     Year: Optional[int] = Field(None, description="Year of manufacture")
