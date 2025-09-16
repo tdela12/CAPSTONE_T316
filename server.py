@@ -148,14 +148,14 @@ def build_price_summary(df, price_col="AdjustedPrice"):
 
     # If no valid data, return default zeros
     if price_series.empty:
-        return {"min": 0.0, "q1": 0.0, "median": 0.0, "q3": 0.0, "max": 0.0}
+        return {"min": 0.0, "iqr_low": 0.0, "median": 0.0, "iqr_high": 0.0, "max": 0.0}
 
     # Compute summary
     return {
         "min": float(price_series.min()),
-        "q1": float(price_series.quantile(0.25)),
+        "iqr_low": float(price_series.quantile(0.25)),
         "median": float(price_series.median()),
-        "q3": float(price_series.quantile(0.75)),
+        "iqr_high": float(price_series.quantile(0.75)),
         "max": float(price_series.max()),
     }
 
@@ -187,10 +187,17 @@ class PredictRequest(BaseModel):
     model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
     features: CarFeatures = Field(..., description="Vehicle / Task feature object")
 
-class PlotOutputs(BaseModel):
+class HistoricalRequest(BaseModel):
+    model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
+    features: CarFeatures = Field(..., description="Vehicle / Task feature object")
+    prediction: float = Field(..., description="Predicted price from /predict endpoint")
+
+class PredictPlotOutputs(BaseModel):
+    shap_png: Optional[str] = Field(None, description="Base64 PNG of SHAP waterfall plot")
+
+class HistoricalPlotOutputs(BaseModel):
     boxplot_png: Optional[str] = Field(None, description="Base64 PNG of boxplot (if applicable)")
     histogram_png: Optional[str] = Field(None, description="Base64 PNG of histogram (if applicable)")
-    shap_png: Optional[str] = Field(None, description="Base64 PNG of SHAP waterfall plot")
     month_vs_price: Optional[str] = Field(None, description="Base64 PNG of Months vs Price scatter")
     distance_vs_price: Optional[str] = Field(None, description="Base64 PNG of Distance vs Price scatter")
 
@@ -203,13 +210,27 @@ class ComparisonResult(BaseModel):
     within_iqr: bool
     z_from_median: float
     confidence: str
+    percentile: float
+
+class SummaryResult(BaseModel):
+    min: Optional[float]
+    max: Optional[float]
+    median: Optional[float]
+    iqr_low: Optional[float]
+    iqr_high: Optional[float]
+
 
 class PredictResponse(BaseModel):
     model: str
     prediction: float
-    historical_summary: Optional[dict[str, float]] = None
+    features: dict
+    plots: PredictPlotOutputs
+    message: Optional[str] = None
+
+class HistoricalResponse(BaseModel):
+    summary: Optional[SummaryResult] = None
     comparison: Optional[ComparisonResult] = None
-    plots: PlotOutputs
+    plots: HistoricalPlotOutputs
     message: Optional[str] = None
 
 class ErrorResponse(BaseModel):
@@ -299,29 +320,37 @@ def preprocess(raw_data: CarFeatures, model_name: str):
 # Logging functions
 # -----------------------------
 
-def filter_df_by_features(df: pd.DataFrame, raw_data: CarFeatures):
-    data_dict = raw_data.model_dump()
-    make = data_dict.get("Make")
-    model = data_dict.get("Model")
-    year = data_dict.get("Year")
+import pandas as pd
+import numpy as np
 
-    # Only filter on columns that exist
-    conditions = []
-    if "Make" in df.columns:
-        conditions.append(df["Make"] == make)
-    if "Model" in df.columns:
-        conditions.append(df["Model"] == model)
-    if "Year" in df.columns:
-        conditions.append(df["Year"] == year)
-
-    if conditions:
-        filtered_df = df[np.logical_and.reduce(conditions)]
-    else:
-        filtered_df = pd.DataFrame()  # empty if no columns match
-
+def filter_df_by_features(df: pd.DataFrame, raw_data):
+    """
+    Filters the dataframe based on Make and Model (required) and any other non-null attributes (optional).
+    Only columns that exist in df are considered.
+    """
+    data_dict = raw_data.model_dump()  # or raw_data.dict() if using Pydantic
+    
+    # Make sure Make and Model exist in raw_data and df
+    required_keys = ["Make", "Model"]
+    for key in required_keys:
+        if key not in df.columns or data_dict.get(key) is None:
+            raise ValueError(f"{key} is required for filtering but is missing")
+    
+    # Start with required filters
+    conditions = [df["Make"] == data_dict["Make"], df["Model"] == data_dict["Model"]]
+    
+    # Add optional filters for all other fields
+    for key, value in data_dict.items():
+        if key not in required_keys and value is not None and key in df.columns:
+            conditions.append(df[key] == value)
+    
+    # Apply all conditions
+    filtered_df = df[np.logical_and.reduce(conditions)]
+    
     return filtered_df
 
-def compare_price(predicted_price, summary):
+
+def compare_price(predicted_price, summary, historical_prices):
     iqr_low = summary.get("q1", 0)
     iqr_high = summary.get("q3", 0)
     mean = summary.get("mean", 0)
@@ -336,10 +365,13 @@ def compare_price(predicted_price, summary):
         if (iqr_high - iqr_low) != 0 else 0
     )
 
-    # Confidence classification
-    if in_iqr:
+    sorted_prices = np.sort(historical_prices)
+    percentile = np.searchsorted(sorted_prices, predicted_price) / len(sorted_prices)
+
+    # Confidence based on percentile
+    if 0.25 <= percentile <= 0.75:
         confidence = "high"
-    elif summary.get("min", 0) <= predicted_price <= summary.get("max", 0):
+    elif 0.05 <= percentile <= 0.95:
         confidence = "medium"
     else:
         confidence = "low"
@@ -352,7 +384,8 @@ def compare_price(predicted_price, summary):
         "iqr_high": iqr_high,
         "within_iqr": in_iqr,
         "z_from_median": z_from_median,
-        "confidence": confidence
+        "confidence": confidence,
+        "percentile": percentile
     }
 
 
@@ -451,6 +484,7 @@ def plot_distance_month_comparison(filtered_df, predicted_price, month_value, di
         plt.close(fig2)
 
     return plots
+
 # -----------------------------
 # Prediction endpoint
 # -----------------------------
@@ -476,43 +510,12 @@ def predict(req: PredictRequest):
         prediction = float(model.predict(processed)[0])
         shap_b64 = generate_shap_plot(model, processed, MODEL_FEATURES[req.model_name])
 
-        hist_df = historical_sets.get(req.model_name, pd.DataFrame(columns=["AdjustedPrice"]))
-        filtered = filter_df_by_features(hist_df, req.features)
-
-        month_distance_plots = {}
-        if req.model_name in ["Capped", "Logbook"]:
-            month_distance_plots = plot_distance_month_comparison(
-                filtered,
-                predicted_price=prediction,
-                month_value=req.features.Months,
-                distance_value=req.features.Distance
-            )
-
-        if filtered.empty:
-            return {
-                "model": req.model_name,
-                "prediction": prediction,
-                "plots": {
-                    "shap_png": shap_b64,
-                    **month_distance_plots
-                },
-                "message": "No historical rows match these features"
-            }
-
-        summary = build_price_summary(filtered, price_col="AdjustedPrice")
-        comparison = compare_price(prediction, summary)
-        box_b64, hist_b64 = plot_price_comparison_base64(filtered, prediction, price_col="AdjustedPrice")
-
         return {
             "model": req.model_name,
-            "prediction": prediction,
-            "historical_summary": summary,   
-            "comparison": comparison,        
+            "features": req.features.model_dump(),
+            "prediction": prediction,   
             "plots": {
-                "boxplot_png": box_b64,
-                "histogram_png": hist_b64,
                 "shap_png": shap_b64,
-                **month_distance_plots
             }
         }
     except ValueError as e:
@@ -526,7 +529,44 @@ def predict(req: PredictRequest):
             detail="Internal server error"
         )
 
+# -----------------------------
+# Historical Data Endpoint
+# -----------------------------
+@app.post("/historical_summary", response_model=HistoricalResponse, summary="Get historical data")
+def get_historical_data(req: HistoricalRequest):
+    hist_df = historical_sets.get(req.model_name, pd.DataFrame(columns=["AdjustedPrice"]))
+    filtered = filter_df_by_features(hist_df, req.features)
 
+    month_distance_plots = {}
+    if req.model_name in ["Capped", "Logbook"]:
+        month_distance_plots = plot_distance_month_comparison(
+            filtered,
+            predicted_price=req.prediction,
+            month_value=req.features.Months,
+            distance_value=req.features.Distance
+        )
+
+    if filtered.empty:
+        return {
+                "plots": {
+                **month_distance_plots
+            },
+            "message": "No historical rows match these features"
+        }
+
+    summary = build_price_summary(filtered, price_col="AdjustedPrice")
+    comparison = compare_price(req.prediction, summary, filtered["AdjustedPrice"].values)
+    box_b64, hist_b64 = plot_price_comparison_base64(filtered, req.prediction, price_col="AdjustedPrice")
+
+    return {
+            "summary": summary,
+            "comparison": comparison,   
+            "plots": {
+                "boxplot_png": box_b64,
+                "histogram_png": hist_b64,
+                **month_distance_plots
+            }
+        }
 # -----------------------------
 # Custom docs endpoints
 # -----------------------------
