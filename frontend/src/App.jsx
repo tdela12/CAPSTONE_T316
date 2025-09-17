@@ -1,7 +1,8 @@
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import './styling/App.css';
-import Home from "./pages/Home.jsx";
+import DataEntry from "./pages/DataEntry.jsx";
+import Results from "./pages/Results.jsx";
 
 
 
@@ -10,7 +11,8 @@ function App() {
     <BrowserRouter>
       <div className='App'>
         <Routes>
-          <Route path = "/" element ={<Home />} />
+          <Route path = "/" element ={<DataEntry />} />
+          <Route path = "/results" element ={<Results />} />
         </Routes>
       </div>
     </BrowserRouter>
