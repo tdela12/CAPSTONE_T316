@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Query
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request
 from fastapi.exceptions import RequestValidationError
@@ -138,6 +138,8 @@ historical_sets = {
     "Repair": load_csv("data/preprocessed_repair_data.csv"),
 }
 
+rego_data = load_csv("data/rego_data.csv")
+
 def build_price_summary(df, price_col="AdjustedPrice"):
     # Make sure the column exists
     if price_col not in df.columns:
@@ -182,6 +184,18 @@ class CarFeatures(BaseModel):
     Months: Optional[float] = Field(None, description="Months since service or warranty (if applicable)")
     AdjustedPrice: Optional[float] = Field(None, description="Historical adjusted price (optional)")
 
+class RegistrationResponse(BaseModel):
+    Registration: str = Field(..., description="Vehicle registration number")
+    Make: Optional[str] = Field(None, description="Vehicle manufacturer (e.g., Toyota)")
+    Model: Optional[str] = Field(None, description="Vehicle model (e.g., Corolla)")
+    Year: Optional[int] = Field(None, description="Year of manufacture")
+    FuelType: Optional[str] = Field(None, description="Fuel type (e.g., Petrol, Diesel, Hybrid)")
+    EngineSize: Optional[float] = Field(None, description="Engine displacement in litres")
+    Transmission: Optional[str] = Field(None, description="Transmission type (e.g., Auto, Manual)")
+    DriveType: Optional[str] = Field(None, description="Drive type (e.g., FWD, RWD, AWD)")
+    
+class RegistrationRequest(BaseModel):
+    Registration: str = Field(..., description="Vehicle registration number")
 
 class PredictRequest(BaseModel):
     model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
@@ -220,7 +234,6 @@ class SummaryResult(BaseModel):
     median: Optional[float]
     iqr_low: Optional[float]
     iqr_high: Optional[float]
-
 
 class PredictResponse(BaseModel):
     model: str
@@ -617,6 +630,25 @@ def get_historical_data(req: HistoricalRequest):
                 details={"error_type": type(e).__name__}
             ).model_dump()
         )
+    
+# -----------------------------
+# Registration Lookup endpoint   
+# -----------------------------
+@app.get(
+        "/registration_lookup",
+        response_model = RegistrationResponse,
+        responses={400: ERROR_RESPONSES[400], 500: ERROR_RESPONSES[500]},
+        summary="Get registration data"
+)
+def get_rego_data(Registration: str = Query(..., description="Vehicle registration number")):
+    reg = Registration.upper()
+    record = rego_data[rego_data["Registration  "] == reg]
+    
+    if record.empty:
+        raise HTTPException(status_code=400, detail="Registration not found")
+    
+    return RegistrationResponse(**record.iloc[0].to_dict())
+
 # -----------------------------
 # Custom docs endpoints
 # -----------------------------

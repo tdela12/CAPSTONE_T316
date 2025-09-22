@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePredict } from "../api";
+import { getRegistration } from "../api";
 import { taskFeatures } from "../../config/features";
 import { featureMeta } from "../../config/featureMeta";
+
 
 export default function DataEntry() {
   const [taskType, setTaskType] = useState("");
   const [features, setFeatures] = useState({
+    Registration: "",
     Make: "",
     Model: "",
     TaskName: "",
@@ -29,37 +32,78 @@ export default function DataEntry() {
     setFeatures((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleRegistrationLookup = async () => {
+  const reg = features.Registration?.trim();
+  if (!reg) return;
+
+  const data = await getRegistration(reg);
+  if (!data) return alert("Could not find vehicle for this registration.");
+
+  const autofillFields = [
+    "Make",
+    "Model",
+    "Year",
+    "FuelType",
+    "EngineSize",
+    "Transmission",
+    "DriveType",
+  ];
+
+  // Use functional state update to ensure the latest state
+  setFeatures((prevFeatures) => {
+  const newFeatures = { ...prevFeatures };
+  autofillFields.forEach((field) => {
+    if (data[field] !== undefined && data[field] !== null) {
+      newFeatures[field] = String(data[field]); // 👈 force string
+    }
+  });
+  return newFeatures;
+});
+
+};
+
+
   // Handle form submission
   const handlePredict = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!taskType) return alert("Please select a task type");
+    if (!taskType) return alert("Please select a task type");
 
-  // Build payload with all features, fill unused ones with null
-  const payloadFeatures = {};
-  Object.keys(features).forEach((key) => {
-    let value = features[key] || null;
+    // Build payload with all features, fill unused ones with null
+    const payloadFeatures = {};
+    Object.keys(features).forEach((key) => {
+      let value = features[key] || null;
 
-    // Convert numeric fields
-    if (["odometer", "year", "engineSize", "distance", "months", "adjustedPrice"].includes(key)) {
-      value = value !== null ? Number(value) : null;
+      // Convert numeric fields
+      if (["odometer", "year", "engineSize", "distance", "months", "adjustedPrice"].includes(key)) {
+        value = value !== null ? Number(value) : null;
+      }
+
+      payloadFeatures[key] = value;
+    });
+
+    const result = await predict(taskType, payloadFeatures);
+
+    if (result) {
+      navigate("/Results", { state: { data: result } });
+    } else {
+      navigate("/Results", { state: { error: "Prediction failed" } });
     }
-
-    payloadFeatures[key] = value;
-  });
-
-  const result = await predict(taskType, payloadFeatures);
-
-  if (result) {
-    navigate("/Results", { state: { data: result } });
-  } else {
-    navigate("/Results", { state: { error: "Prediction failed" } });
-  }
-};
+  };
 
 
   return (
     <div className="MainPage">
+      <div>
+        <label htmlFor="registration">Vehicle Registration:</label>
+        <input
+          type="text"
+          id="registration"
+          value={features.Registration || ""}
+          onChange={(e) => handleChange("Registration", e.target.value)}
+          onBlur={handleRegistrationLookup} // call API when input loses focus
+        />
+      </div>
       <form onSubmit={handlePredict} className="featureForm">
         {/* Task type dropdown */}
         <label htmlFor="taskType">Select task type to predict:</label>

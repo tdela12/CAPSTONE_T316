@@ -71,3 +71,18 @@ export const useHistoricalSummary = () => {
   return { data, error, fetchHistorical };
 };
 
+export const getRegistration = async (registration) => {
+    if (!registration) return null;
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/registration_lookup?Registration=${registration}`);
+      if (!res.ok) throw new Error("Registration not found");
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  };
+
+
