@@ -54,7 +54,7 @@ export default function DataEntry() {
   const newFeatures = { ...prevFeatures };
   autofillFields.forEach((field) => {
     if (data[field] !== undefined && data[field] !== null) {
-      newFeatures[field] = String(data[field]); // 👈 force string
+      newFeatures[field] = String(data[field]); // force string
     }
   });
   return newFeatures;
@@ -151,6 +151,7 @@ export default function DataEntry() {
               <label htmlFor={field}>{meta.label}:</label>
               <input
                 type={meta.type}
+                placeholder= {`Please enter ${meta.type}`}
                 id={field}
                 value={features[field]}
                 onChange={(e) => handleChange(field, e.target.value)}
