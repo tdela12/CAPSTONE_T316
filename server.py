@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Query
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request
 from fastapi.exceptions import RequestValidationError
@@ -138,6 +138,8 @@ historical_sets = {
     "Repair": load_csv("data/preprocessed_repair_data.csv"),
 }
 
+rego_data = load_csv("data/rego_data.csv")
+
 def build_price_summary(df, price_col="AdjustedPrice"):
     # Make sure the column exists
     if price_col not in df.columns:
@@ -182,6 +184,18 @@ class CarFeatures(BaseModel):
     Months: Optional[float] = Field(None, description="Months since service or warranty (if applicable)")
     AdjustedPrice: Optional[float] = Field(None, description="Historical adjusted price (optional)")
 
+class RegistrationResponse(BaseModel):
+    Registration: str = Field(..., description="Vehicle registration number")
+    Make: Optional[str] = Field(None, description="Vehicle manufacturer (e.g., Toyota)")
+    Model: Optional[str] = Field(None, description="Vehicle model (e.g., Corolla)")
+    Year: Optional[int] = Field(None, description="Year of manufacture")
+    FuelType: Optional[str] = Field(None, description="Fuel type (e.g., Petrol, Diesel, Hybrid)")
+    EngineSize: Optional[float] = Field(None, description="Engine displacement in litres")
+    Transmission: Optional[str] = Field(None, description="Transmission type (e.g., Auto, Manual)")
+    DriveType: Optional[str] = Field(None, description="Drive type (e.g., FWD, RWD, AWD)")
+    
+class RegistrationRequest(BaseModel):
+    Registration: str = Field(..., description="Vehicle registration number")
 
 class PredictRequest(BaseModel):
     model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
@@ -220,7 +234,6 @@ class SummaryResult(BaseModel):
     median: Optional[float]
     iqr_low: Optional[float]
     iqr_high: Optional[float]
-
 
 class PredictResponse(BaseModel):
     model: str
@@ -330,7 +343,7 @@ def filter_df_by_features(df: pd.DataFrame, raw_data):
     Filters the dataframe based on Make and Model (required) and any other non-null attributes (optional).
     Only columns that exist in df are considered.
     """
-    data_dict = raw_data.model_dump()  # or raw_data.dict() if using Pydantic
+    data_dict = raw_data.model_dump()  # or raw_data.model_dump() if using Pydantic
     
     # Make sure Make and Model exist in raw_data and df
     required_keys = ["Make", "Model"]
@@ -490,20 +503,22 @@ def plot_distance_month_comparison(filtered_df, predicted_price, month_value, di
 # -----------------------------
 # Prediction endpoint
 # -----------------------------
-@app.post("/predict",
+@app.post(
+    "/predict",
     response_model=PredictResponse,
     summary="Predict a service price",
     tags=["Prediction"],
-responses={
-    200: {"description": "Prediction successful", "model": PredictResponse},
-    **ERROR_RESPONSES
-})
-
+    responses={200: {"description": "Prediction successful", "model": PredictResponse}, **ERROR_RESPONSES}
+)
 def predict(req: PredictRequest):
     if req.model_name not in models:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown model {req.model_name}"
+            detail=ErrorResponse(
+                code=400,
+                message=f"Unknown model: {req.model_name}",
+                details={"model_name": req.model_name}
+            ).model_dump()
         )
 
     try:
@@ -515,60 +530,125 @@ def predict(req: PredictRequest):
         return {
             "model": req.model_name,
             "features": req.features.model_dump(),
-            "prediction": prediction,   
-            "plots": {
-                "shap_png": shap_b64,
-            }
+            "prediction": prediction,
+            "plots": {"shap_png": shap_b64},
         }
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=ErrorResponse(
+                code=400,
+                message=f"Bad input: {str(e)}",
+                details={"model_name": req.model_name, "features": req.features.model_dump()}
+            ).model_dump()
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail=ErrorResponse(
+                code=500,
+                message=f"Unexpected server error: {str(e)}",
+                details={"error_type": type(e).__name__}
+            ).model_dump()
         )
 
 # -----------------------------
-# Historical Data Endpoint
+# Historical summary endpoint   
 # -----------------------------
-@app.post("/historical_summary", response_model=HistoricalResponse, summary="Get historical data")
+@app.post(
+    "/historical_summary",
+    response_model=HistoricalResponse,
+    tags=["Historical"],
+    responses={400: ERROR_RESPONSES[400], 500: ERROR_RESPONSES[500]},
+    summary="Get historical data"
+)
 def get_historical_data(req: HistoricalRequest):
-    hist_df = historical_sets.get(req.model_name, pd.DataFrame(columns=["AdjustedPrice"]))
-    filtered = filter_df_by_features(hist_df, req.features)
+    try:
+        hist_df = historical_sets.get(req.model_name)
+        if hist_df is None:
+            raise HTTPException(
+                status_code=404,
+                detail=ErrorResponse(
+                    code=404,
+                    message=f"No dataset found for model '{req.model_name}'",
+                    details={"model_name": req.model_name}
+                ).model_dump()
+            )
 
-    month_distance_plots = {}
-    if req.model_name in ["Capped", "Logbook"]:
-        month_distance_plots = plot_distance_month_comparison(
-            filtered,
-            predicted_price=req.prediction,
-            month_value=req.months,
-            distance_value=req.distance
-        )
+        filtered = filter_df_by_features(hist_df, req.features)
 
-    if filtered.empty:
+        # Generate scatter plots even if no rows found
+        month_distance_plots = {}
+        if req.model_name in ["Capped", "Logbook"]:
+            month_distance_plots = plot_distance_month_comparison(
+                filtered,
+                predicted_price=req.prediction,
+                month_value=req.months,
+                distance_value=req.distance
+            )
+
+        if filtered.empty:
+            raise HTTPException(
+                status_code=404,
+                detail=ErrorResponse(
+                    code=404,
+                    message="No historical rows match these features",
+                    details={"model": req.model_name, "features": req.features.model_dump()}
+                ).model_dump()
+            )
+
+        # Build summary + plots
+        summary = build_price_summary(filtered, price_col="AdjustedPrice")
+        comparison = compare_price(req.prediction, summary, filtered["AdjustedPrice"].values)
+        box_b64, hist_b64 = plot_price_comparison_base64(filtered, req.prediction, price_col="AdjustedPrice")
+
         return {
-                "plots": {
-                **month_distance_plots
-            },
-            "message": "No historical rows match these features"
-        }
-
-    summary = build_price_summary(filtered, price_col="AdjustedPrice")
-    comparison = compare_price(req.prediction, summary, filtered["AdjustedPrice"].values)
-    box_b64, hist_b64 = plot_price_comparison_base64(filtered, req.prediction, price_col="AdjustedPrice")
-
-    return {
             "summary": summary,
-            "comparison": comparison,   
+            "comparison": comparison,
             "plots": {
                 "boxplot_png": box_b64,
                 "histogram_png": hist_b64,
-                **month_distance_plots
-            }
+                **month_distance_plots,
+            },
         }
+
+    except KeyError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=ErrorResponse(
+                code=400,
+                message=f"Invalid feature key: {str(e)}",
+                details={"invalid_key": str(e)}
+            ).model_dump()
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=ErrorResponse(
+                code=500,
+                message=f"Unexpected server error: {str(e)}",
+                details={"error_type": type(e).__name__}
+            ).model_dump()
+        )
+    
+# -----------------------------
+# Registration Lookup endpoint   
+# -----------------------------
+@app.get(
+        "/registration_lookup",
+        response_model = RegistrationResponse,
+        responses={400: ERROR_RESPONSES[400], 500: ERROR_RESPONSES[500]},
+        summary="Get registration data"
+)
+def get_rego_data(Registration: str = Query(..., description="Vehicle registration number")):
+    reg = Registration.upper()
+    record = rego_data[rego_data["Registration  "] == reg]
+    
+    if record.empty:
+        raise HTTPException(status_code=400, detail="Registration not found")
+    
+    return RegistrationResponse(**record.iloc[0].to_dict())
+
 # -----------------------------
 # Custom docs endpoints
 # -----------------------------
