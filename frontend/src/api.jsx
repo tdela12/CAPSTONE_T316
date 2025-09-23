@@ -1,4 +1,10 @@
 import { useState } from "react";
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: "http://127.0.0.1:8000", // Replace with server backend URL if different
+  headers: { "Content-Type": "application/json" },
+});
 
 export const usePredict = () => {
   const [data, setData] = useState(null);
@@ -6,27 +12,17 @@ export const usePredict = () => {
 
   const predict = async (taskType, features) => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/predict", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model_name: taskType,
-          features: features
-        }),
+      const res = await api.post("/predict", {
+        model_name: taskType,
+        features: features,
       });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || "Prediction failed");
-      }
-
-      const resData = await res.json();
-      setData(resData);
+      setData(res.data);
       setError(null);
-      return resData;
+      return res.data;
     } catch (err) {
       console.error(err);
-      setError(err.message || "Prediction failed");
+      setError(err.response?.data || err.message || "Prediction failed");
       return null;
     }
   };
@@ -38,32 +34,28 @@ export const useHistoricalSummary = () => {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
-  const fetchHistorical = async (taskType, features, prediction, months, distance) => {
+  const fetchHistorical = async (
+    taskType,
+    features,
+    prediction,
+    months,
+    distance
+  ) => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/historical_summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model_name: taskType,
-          features: features,
-          prediction: prediction,
-          months: months,
-          distance: distance
-        }),
+      const res = await api.post("/historical_summary", {
+        model_name: taskType,
+        features: features,
+        prediction: prediction,
+        months: months,
+        distance: distance,
       });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || "Failed to fetch historical data");
-      }
-
-      const resData = await res.json();
-      setData(resData);
+      setData(res.data);
       setError(null);
-      return resData;
+      return res.data;
     } catch (err) {
       console.error(err);
-      setError(err.message || "Failed to fetch historical data");
+      setError(err.response?.data || err.message || "Failed to fetch historical data");
       return null;
     }
   };
@@ -72,17 +64,15 @@ export const useHistoricalSummary = () => {
 };
 
 export const getRegistration = async (registration) => {
-    if (!registration) return null;
+  if (!registration) return null;
 
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/registration_lookup?Registration=${registration}`);
-      if (!res.ok) throw new Error("Registration not found");
-      const data = await res.json();
-      return data;
-    } catch (err) {
-      console.error(err);
-      return null;
-    }
-  };
-
-
+  try {
+    const res = await api.get(`/registration_lookup`, {
+      params: { Registration: registration },
+    });
+    return res.data;
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+};

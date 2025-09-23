@@ -642,7 +642,7 @@ def get_historical_data(req: HistoricalRequest):
 )
 def get_rego_data(Registration: str = Query(..., description="Vehicle registration number")):
     reg = Registration.upper()
-    record = rego_data[rego_data["Registration  "] == reg]
+    record = rego_data[rego_data["Registration"] == reg]
     
     if record.empty:
         raise HTTPException(status_code=400, detail="Registration not found")
