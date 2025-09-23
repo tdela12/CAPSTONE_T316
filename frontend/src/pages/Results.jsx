@@ -6,6 +6,9 @@ export default function ResultsPage() {
     const location = useLocation();
     const navigate = useNavigate();
 
+    const { fetchHistorical, data: historicalData, error: historicalError } = useHistoricalSummary();
+    const [loading, setLoading] = useState(false);
+
     if (!location.state) {
         return (
             <div>
@@ -17,15 +20,13 @@ export default function ResultsPage() {
 
     const { data, error } = location.state;
 
-    const { fetchHistorical, data: historicalData, error: historicalError } = useHistoricalSummary();
-
     // Initialize selectedFeatures dynamically based on data.features
     const initialSelectedFeatures = Object.fromEntries(
-    Object.keys(data.features).map(key => [
-        key,
-        key === "Make" || key === "Model" ? data.features[key] : null
-    ])
-);
+        Object.keys(data.features).map(key => [
+            key,
+            key === "Make" || key === "Model" ? data.features[key] : null
+        ])
+    );
 
     const [selectedFeatures, setSelectedFeatures] = useState(initialSelectedFeatures);
 
@@ -38,24 +39,46 @@ export default function ResultsPage() {
         return n + "th";
     }
 
+    const handleFetchHistorical = async () => {
+        if (data.prediction != null) {
+            setLoading(true);
+            await fetchHistorical(
+                data.model,
+                selectedFeatures,
+                data.prediction,
+                data.features.Months,
+                data.features.Distance
+            );
+            setLoading(false);
+        } else {
+            console.error("Prediction is missing, cannot fetch historical data.");
+        }
+    };
+
     return (
         <div className="MainPage">
-            {error && <p>{error}</p>}
+            {error && <p className="text-red-500">{error}</p>}
+
             {data && (
                 <div>
                     <h2>Prediction Results</h2>
-                    <h3>Predicted Price: ${data.prediction.toFixed(2)}</h3>
+                    <h3>Predicted Price: ${data.prediction?.toFixed(2) ?? "N/A"}</h3>
 
-                    {data.plots.shap_png && (
+                    {data.plots?.shap_png && (
                         <div>
                             <h4>SHAP Values</h4>
-                            <img src={`data:image/png;base64,${data.plots.shap_png}`} alt="SHAP"style={{ width: "800px", height: "auto" }}/>
+                            <img
+                                src={`data:image/png;base64,${data.plots.shap_png}`}
+                                alt="SHAP"
+                                style={{ width: "800px", height: "auto" }}
+                            />
                         </div>
                     )}
+
                     <h2>Historical Comparison of {data.model} Services for {data.features.Model}</h2>
+                    
                     <div>
                         <h4>Filter Historical Data</h4>
-
                         {Object.entries(data.features)
                             .filter(([key, value]) => value !== null && value !== undefined && key !== "Make" && key !== "Model")
                             .map(([key, value]) => (
@@ -75,64 +98,63 @@ export default function ResultsPage() {
                             ))
                         }
 
-                        <button
-                            onClick={() => {
-                                if (data.prediction != null) {
-                                    fetchHistorical(data.model, selectedFeatures, data.prediction, data.features.Months, data.features.Distance);
-                                } else {
-                                    console.error("Prediction is missing, cannot fetch historical data.");
-                                }
-                            }}
-                        >
-                            Apply Filters
-                        </button>
+                        <button onClick={handleFetchHistorical}>Apply Filters</button>
+                        {loading && <p>Loading historical data...</p>}
                     </div>
 
-                    {historicalError && <p>{historicalError}</p>}
+                    {historicalError && <p className="text-red-500">{historicalError}</p>}
 
                     {historicalData && (
                         <div>
                             <h4>Filtered Historical Summary</h4>
-                            {historicalData.summary && (
+
+                            {historicalData.summary ? (
                                 <div>
-                                    <p>Median: ${historicalData.summary.median.toFixed(2)}</p>
-                                    <p>Min: ${historicalData.summary.min.toFixed(2)}</p>
-                                    <p>Max: ${historicalData.summary.max.toFixed(2)}</p>
+                                    <p>Median: ${historicalData.summary.median?.toFixed(2) ?? "N/A"}</p>
+                                    <p>Min: ${historicalData.summary.min?.toFixed(2) ?? "N/A"}</p>
+                                    <p>Max: ${historicalData.summary.max?.toFixed(2) ?? "N/A"}</p>
                                 </div>
+                            ) : (
+                                <p>No historical summary available.</p>
                             )}
-                            {historicalData.comparison && (
+
+                            {historicalData.comparison ? (
                                 <div>
-
-                                    <p>{historicalData.comparison.confidence} confidence as the prediction falls in the {getOrdinal(Math.round(historicalData.comparison.percentile * 100))} percentile</p>
+                                    <p>
+                                        {historicalData.comparison.confidence ?? "N/A"} confidence as the prediction falls in the{" "}
+                                        {getOrdinal(Math.round((historicalData.comparison.percentile ?? 0) * 100))} percentile
+                                    </p>
                                 </div>
-
+                            ) : (
+                                <p>No comparison available.</p>
                             )}
 
-                            {historicalData.plots?.boxplot_png && (
-                                <img
-                                    src={`data:image/png;base64,${historicalData.plots.boxplot_png}`}
-                                    alt="Boxplot"
-                                />
-                            )}
-
-                            {historicalData.plots?.histogram_png && (
-                                <img
-                                    src={`data:image/png;base64,${historicalData.plots.histogram_png}`}
-                                    alt="Histogram"
-                                />
-                            )}
-                            {historicalData.plots?.distance_vs_price_png && (
-                                <img
-                                    src={`data:image/png;base64,${historicalData.plots.distance_vs_price_png}`}
-                                    alt="Histogram"
-                                />
-                            )}
-                            {historicalData.plots?.month_vs_price_png && (
-                                <img
-                                    src={`data:image/png;base64,${historicalData.plots.month_vs_price_png}`}
-                                    alt="Histogram"
-                                />
-                            )}
+                            <div>
+                                {historicalData.plots?.boxplot_png && (
+                                    <img
+                                        src={`data:image/png;base64,${historicalData.plots.boxplot_png}`}
+                                        alt="Boxplot"
+                                    />
+                                )}
+                                {historicalData.plots?.histogram_png && (
+                                    <img
+                                        src={`data:image/png;base64,${historicalData.plots.histogram_png}`}
+                                        alt="Histogram"
+                                    />
+                                )}
+                                {historicalData.plots?.distance_vs_price_png && (
+                                    <img
+                                        src={`data:image/png;base64,${historicalData.plots.distance_vs_price_png}`}
+                                        alt="Distance vs Price"
+                                    />
+                                )}
+                                {historicalData.plots?.month_vs_price_png && (
+                                    <img
+                                        src={`data:image/png;base64,${historicalData.plots.month_vs_price_png}`}
+                                        alt="Month vs Price"
+                                    />
+                                )}
+                            </div>
                         </div>
                     )}
 
