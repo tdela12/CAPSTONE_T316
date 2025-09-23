@@ -1,8 +1,8 @@
-# config.py
 from pathlib import Path
 import os
 
 BASE_DIR = Path(__file__).parent
+
 MODEL_PATHS = {
     "Capped": BASE_DIR / "models_files" / "capped_model.cbm",
     "Logbook": BASE_DIR / "models_files" / "logbook_model.cbm",
@@ -18,11 +18,19 @@ DATA_PATHS = {
     "Rego": BASE_DIR / "data" / "rego_data.csv",
 }
 
+# Feature order for each model
+MODEL_FEATURES = {
+    "Capped": ["Make", "Model", "Year", "FuelType", "EngineSize", "Transmission", "DriveType", "Distance"],
+    "Logbook": ["Make", "Model", "Year", "FuelType", "EngineSize", "Transmission", "DriveType", "Distance", "Months"],
+    "Prescribed": ["Make", "Model", "Year", "FuelType", "EngineSize", "Transmission", "DriveType", "Distance"],
+    "Repair": ["TaskName", "Make", "Model", "Year", "FuelType", "EngineSize", "Transmission", "DriveType", "Distance"],
+}
+
 CORS_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:3000",
 ]
-# Use '*' only for local dev; override via env in production:
+
 ALLOW_ALL_CORS_DEV = os.getenv("ALLOW_ALL_CORS_DEV", "true").lower() == "true"

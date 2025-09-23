@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Dict, Optional
 
 class RegistrationResponse(BaseModel):
     Registration: str = Field(..., description="Vehicle registration number")
@@ -11,7 +11,6 @@ class RegistrationResponse(BaseModel):
     Transmission: Optional[str] = Field(None, description="Transmission type (e.g., Auto, Manual)")
     DriveType: Optional[str] = Field(None, description="Drive type (e.g., FWD, RWD, AWD)")
     
-c
 class PredictPlotOutputs(BaseModel):
     shap_png: Optional[str] = Field(None, description="Base64 PNG of SHAP waterfall plot")
 
@@ -53,6 +52,6 @@ class HistoricalResponse(BaseModel):
     message: Optional[str] = None
 
 class ErrorResponse(BaseModel):
-    code: int
+    code: str
     message: str
-    details: Optional[dict] = None
+    details: Optional[List[Dict]] = None  # now accepts a list of dicts

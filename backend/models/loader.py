@@ -1,6 +1,5 @@
 from catboost import CatBoostRegressor, Pool
 import pandas as pd
-from . import paths  # or import config.MODEL_PATHS
 from config import MODEL_PATHS, DATA_PATHS
 from typing import Dict
 
