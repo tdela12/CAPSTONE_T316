@@ -103,42 +103,6 @@ app.add_middleware(
 )
 
 
-# -----------------------------
-# Load pretrained CatBoost models
-# -----------------------------
-# Dictionary holds models by task type
-models = {
-    "Capped": CatBoostRegressor().load_model("models/capped_model.cbm"),
-    "Logbook": CatBoostRegressor().load_model("models/logbook_model.cbm"),
-    "Prescribed": CatBoostRegressor().load_model("models/prescribed_model.cbm"),
-    "Repair": CatBoostRegressor().load_model("models/repair_model.cbm"),
-}
-
-# Define required feature order for each model
-MODEL_FEATURES ={
-    "Capped": ["Make", "Model", "Year", "FuelType", "EngineSize", "Transmission", "DriveType", "Distance",],
-    "Logbook": ["Make", "Model", "Year", "FuelType",  "EngineSize", "Transmission", "DriveType", "Distance", "Months"],
-    "Prescribed": ["Make", "Model", "Year", "FuelType", "EngineSize", "Transmission",  "DriveType", "Distance",],
-    "Repair": ["TaskName", "Make", "Model", "Year", "FuelType", "EngineSize", "Transmission",  "DriveType", "Distance",],
-}
-
-# -----------------------------
-# Load historical training context data
-# -----------------------------
-def load_csv(file_path):
-    try:
-        return pd.read_csv(file_path)
-    except FileNotFoundError:
-        return pd.DataFrame(columns=["AdjustedPrice"])
-
-historical_sets = {
-    "Capped": load_csv("data/preprocessed_capped_data.csv"),
-    "Logbook": load_csv("data/preprocessed_log_data.csv"),
-    "Prescribed": load_csv("data/preprocessed_prescribed_data.csv"),
-    "Repair": load_csv("data/preprocessed_repair_data.csv"),
-}
-
-rego_data = load_csv("data/rego_data.csv")
 
 def build_price_summary(df, price_col="AdjustedPrice"):
     # Make sure the column exists
@@ -171,87 +135,9 @@ price_summaries = {
 # -----------------------------
 # Pydantic request models (input validation)
 # -----------------------------
-class CarFeatures(BaseModel):
-    TaskName: Optional[str] = Field(..., description="Name of the task/service (e.g., Wheel alignment, Brake service)")
-    Make: str = Field(..., description="Vehicle manufacturer (e.g., Toyota)")
-    Model: str = Field(..., description="Vehicle model (e.g., Corolla)")
-    Year: Optional[int] = Field(None, description="Year of manufacture")
-    FuelType: Optional[str] = Field(None, description="Fuel type (e.g., Petrol, Diesel, Hybrid)")
-    Transmission: Optional[str] = Field(None, description="Transmission type (e.g., Auto, Manual)")
-    EngineSize: Optional[float] = Field(None, description="Engine displacement in litres")
-    DriveType: Optional[str] = Field(None, description="Drive type (e.g., FWD, RWD, AWD)")
-    Distance: Optional[float] = Field(None, description="Vehicle odometer reading (km)")
-    Months: Optional[float] = Field(None, description="Months since service or warranty (if applicable)")
-    AdjustedPrice: Optional[float] = Field(None, description="Historical adjusted price (optional)")
 
-class RegistrationResponse(BaseModel):
-    Registration: str = Field(..., description="Vehicle registration number")
-    Make: Optional[str] = Field(None, description="Vehicle manufacturer (e.g., Toyota)")
-    Model: Optional[str] = Field(None, description="Vehicle model (e.g., Corolla)")
-    Year: Optional[int] = Field(None, description="Year of manufacture")
-    FuelType: Optional[str] = Field(None, description="Fuel type (e.g., Petrol, Diesel, Hybrid)")
-    EngineSize: Optional[float] = Field(None, description="Engine displacement in litres")
-    Transmission: Optional[str] = Field(None, description="Transmission type (e.g., Auto, Manual)")
-    DriveType: Optional[str] = Field(None, description="Drive type (e.g., FWD, RWD, AWD)")
-    
-class RegistrationRequest(BaseModel):
-    Registration: str = Field(..., description="Vehicle registration number")
 
-class PredictRequest(BaseModel):
-    model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
-    features: CarFeatures = Field(..., description="Vehicle / Task feature object")
 
-class HistoricalRequest(BaseModel):
-    model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
-    features: CarFeatures = Field(..., description="Vehicle / Task feature object")
-    prediction: float = Field(..., description="Predicted price from /predict endpoint")
-    months: Optional[float] = Field(None, description="Months of service (if applicable)")
-    distance: Optional[float] = Field(None, description="Vehicle odometer reading (km)")
-
-class PredictPlotOutputs(BaseModel):
-    shap_png: Optional[str] = Field(None, description="Base64 PNG of SHAP waterfall plot")
-
-class HistoricalPlotOutputs(BaseModel):
-    boxplot_png: Optional[str] = Field(None, description="Base64 PNG of boxplot (if applicable)")
-    histogram_png: Optional[str] = Field(None, description="Base64 PNG of histogram (if applicable)")
-    month_vs_price_png: Optional[str] = Field(None, description="Base64 PNG of Months vs Price scatter")
-    distance_vs_price_png: Optional[str] = Field(None, description="Base64 PNG of Distance vs Price scatter")
-
-class ComparisonResult(BaseModel):
-    predicted_price: float
-    mean: Optional[float]
-    median: Optional[float]
-    iqr_low: Optional[float]
-    iqr_high: Optional[float]
-    within_iqr: bool
-    z_from_median: float
-    confidence: str
-    percentile: float
-
-class SummaryResult(BaseModel):
-    min: Optional[float]
-    max: Optional[float]
-    median: Optional[float]
-    iqr_low: Optional[float]
-    iqr_high: Optional[float]
-
-class PredictResponse(BaseModel):
-    model: str
-    prediction: float
-    features: dict
-    plots: PredictPlotOutputs
-    message: Optional[str] = None
-
-class HistoricalResponse(BaseModel):
-    summary: Optional[SummaryResult] = None
-    comparison: Optional[ComparisonResult] = None
-    plots: HistoricalPlotOutputs
-    message: Optional[str] = None
-
-class ErrorResponse(BaseModel):
-    code: int
-    message: str
-    details: Optional[dict] = None
 
 
 # Standardized error responses for reuse
@@ -306,30 +192,6 @@ ERROR_RESPONSES = {
 # -----------------------------
 # Preprocessing 
 # -----------------------------
-def preprocess(raw_data: CarFeatures, model_name: str):
-    data_dict = raw_data.model_dump()
-    
-    # Drop unwanted features
-    drop_features = ["AdjustedPrice", "Odometer"]
-    cleaned_data = {k: v for k, v in data_dict.items() if k not in drop_features}
-    
-    for cat in ["TaskName", "DriveType", "Make", "Model", "FuelType", "Transmission"]:
-        value = cleaned_data.get(cat)
-        if value is None:        
-            cleaned_data[cat] = "missing"
-        else:
-            cleaned_data[cat] = str(value)
-            
-
-    # Get the correct feature order for the model
-    feature_order = MODEL_FEATURES.get(model_name)
-    if not feature_order:
-        raise ValueError(f"No feature mapping found for model: {model_name}")
-    
-    # Build ordered feature list
-    feature_list = [cleaned_data.get(k, 0) for k in feature_order]  # default 0 if missing
-    
-    return [feature_list]
 
 # -----------------------------
 # Logging functions
