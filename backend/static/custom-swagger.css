@@ -1,0 +1,70 @@
+/* import original swagger ui styles first (CDN) */
+@import url("https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css");
+
+/* --- Overrides / Brand styling --- */
+:root {
+  --primary-color: #0f172a;   /* dark slate */
+  --accent-color: #0ea5a4;    /* teal accent */
+  --muted-color: #6b7280;
+}
+
+/* top bar */
+.swagger-ui .topbar {
+  background-color: var(--primary-color) !important;
+  border-bottom: 4px solid rgba(14,165,164,0.12);
+  height: 72px;
+}
+
+/* topbar brand text */
+.swagger-ui .topbar .topbar-wrapper .link {
+  font-weight: 700;
+  font-size: 18px;
+  color: #ffffff !important;
+  padding-left: 12px;
+}
+
+/* add logo (served from /static/logo.png) */
+.swagger-ui .topbar .topbar-wrapper .link img {
+  height: 40px;
+  margin-right: 10px;
+}
+
+/* request / response box tweaks */
+.opblock {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+}
+
+/* operation summary */
+.opblock-summary {
+  background: linear-gradient(90deg, rgba(14,165,164,0.03), transparent);
+}
+
+/* parameter table header */
+.parameter__name, .parameter__type {
+  font-weight: 600;
+}
+
+/* Play/Execute button */
+.try-out__btn, .btn.execute {
+  background-color: var(--accent-color) !important;
+  border-color: transparent !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+
+/* make the models/definitions area more legible */
+.models {
+  font-size: 13px;
+  color: var(--muted-color);
+}
+
+/* small responsive improvement */
+@media (max-width: 600px) {
+  .swagger-ui .topbar {
+    height: 56px;
+  }
+  .swagger-ui .topbar .link {
+    font-size: 16px;
+  }
+}
