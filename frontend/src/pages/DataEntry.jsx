@@ -33,34 +33,34 @@ export default function DataEntry() {
   };
 
   const handleRegistrationLookup = async () => {
-  const reg = features.Registration?.trim();
-  if (!reg) return;
+    const reg = features.Registration?.trim();
+    if (!reg) return;
 
-  const data = await getRegistration(reg);
-  if (!data) return alert("Could not find vehicle for this registration.");
+    const data = await getRegistration(reg);
+    if (!data) return alert("Could not find vehicle for this registration.");
 
-  const autofillFields = [
-    "Make",
-    "Model",
-    "Year",
-    "FuelType",
-    "EngineSize",
-    "Transmission",
-    "DriveType",
-  ];
+    const autofillFields = [
+      "Make",
+      "Model",
+      "Year",
+      "FuelType",
+      "EngineSize",
+      "Transmission",
+      "DriveType",
+    ];
 
-  // Use functional state update to ensure the latest state
-  setFeatures((prevFeatures) => {
-  const newFeatures = { ...prevFeatures };
-  autofillFields.forEach((field) => {
-    if (data[field] !== undefined && data[field] !== null) {
-      newFeatures[field] = String(data[field]); // force string
-    }
-  });
-  return newFeatures;
-});
+    // Use functional state update to ensure the latest state
+    setFeatures((prevFeatures) => {
+      const newFeatures = { ...prevFeatures };
+      autofillFields.forEach((field) => {
+        if (data[field] !== undefined && data[field] !== null) {
+          newFeatures[field] = String(data[field]); // force string
+        }
+      });
+      return newFeatures;
+    });
 
-};
+  };
 
 
   // Handle form submission
@@ -94,31 +94,38 @@ export default function DataEntry() {
 
   return (
     <div className="MainPage">
-      <div>
-        <label htmlFor="registration">Vehicle Registration:</label>
-        <input
-          type="text"
-          id="registration"
-          value={features.Registration || ""}
-          onChange={(e) => handleChange("Registration", e.target.value)}
-          onBlur={handleRegistrationLookup} // call API when input loses focus
-        />
-      </div>
       <form onSubmit={handlePredict} className="featureForm">
+        <div className="formGroup">
+          <label htmlFor="registration">Vehicle Registration:</label>
+          <input
+            type="text"
+            id="registration"
+            placeholder="Please enter a valid vehicle registration."
+            className="enterBar"
+            value={features.Registration || ""}
+            onChange={(e) => handleChange("Registration", e.target.value)}
+            onBlur={handleRegistrationLookup} // call API when input loses focus
+          />
+        </div>
+
         {/* Task type dropdown */}
-        <label htmlFor="taskType">Select task type to predict:</label>
-        <select
-          id="taskType"
-          value={taskType}
-          onChange={(e) => setTaskType(e.target.value)}
-        >
-          <option value="">-- Choose a task --</option>
-          {Object.keys(taskFeatures).map((task) => (
-            <option key={task} value={task}>
-              {task}
-            </option>
-          ))}
-        </select>
+        <div className="formGroup">
+          <label htmlFor="taskType">Select task type to predict:</label>
+          <select
+            id="taskType"
+            className="enterBar"
+            value={taskType}
+            onChange={(e) => setTaskType(e.target.value)}
+          >
+            <option value="">-- Choose a task --</option>
+            {Object.keys(taskFeatures).map((task) => (
+              <option key={task} value={task}>
+                {task}
+              </option>
+            ))}
+          </select>
+        </div>
+
 
         {/* Render relevant fields dynamically */}
         {taskFeatures[taskType]?.map((field) => {
@@ -128,10 +135,11 @@ export default function DataEntry() {
 
           if (meta.type === "select") {
             return (
-              <div key={field}>
+              <div className="formGroup" key={field}>
                 <label htmlFor={field}>{meta.label}:</label>
                 <select
                   id={field}
+                  className="enterBar"
                   value={features[field]}
                   onChange={(e) => handleChange(field, e.target.value)}
                 >
@@ -147,11 +155,12 @@ export default function DataEntry() {
           }
 
           return (
-            <div key={field}>
+            <div className="formGroup" key={field}>
               <label htmlFor={field}>{meta.label}:</label>
               <input
                 type={meta.type}
-                placeholder= {`Please enter ${meta.type}`}
+                placeholder={`Please enter ${meta.type}`}
+                className="enterBar"
                 id={field}
                 value={features[field]}
                 onChange={(e) => handleChange(field, e.target.value)}
@@ -160,9 +169,11 @@ export default function DataEntry() {
           );
         })}
 
-        <button type="submit" id="predictBtn">
-          Predict
-        </button>
+        <div className="formActions">
+          <button type="submit" id="predictBtn">
+            Predict
+          </button>
+        </div>
       </form>
     </div>
   );
