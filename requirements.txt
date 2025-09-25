@@ -15,6 +15,7 @@
 numpy
 pandas
 scipy
+openpyxl
 
 # Machine Learning
 scikit-learn
@@ -26,6 +27,7 @@ matplotlib
 shap
 
 #Jupyter and IPython
+jupyter
 jupyterlab
 ipykernel
 
