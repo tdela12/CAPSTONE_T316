@@ -74,6 +74,7 @@ export default function DataEntry() {
     Object.keys(features).forEach((key) => {
       let value = features[key] || null;
 
+
       // Convert numeric fields
       if (["odometer", "year", "engineSize", "distance", "months", "adjustedPrice"].includes(key)) {
         value = value !== null ? Number(value) : null;
