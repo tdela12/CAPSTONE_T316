@@ -92,4 +92,5 @@ def build_price_summary(df, price_col="AdjustedPrice"):
         "median": float(price_series.median()),
         "iqr_high": float(price_series.quantile(0.75)),
         "max": float(price_series.max()),
+        "count": float(len(price_series)),
     }
