@@ -29,6 +29,9 @@ export default function DataEntry() {
 
   // Update feature value
   const handleChange = (key, value) => {
+    if (typeof value === "string") {
+      value = value.toUpperCase();
+    }
     setFeatures((prev) => ({ ...prev, [key]: value }));
   };
 
