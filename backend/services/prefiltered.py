@@ -6,29 +6,23 @@ def run_prefiltered(app, req):
 
   if df.empty:
         return {
-            "summary": None,
-            "comparison": None,
-            "plots": {
-                "boxplot_png": None,
-                "histogram_png": None,
-                "month_vs_price_png": None,
-                "distance_vs_price_png": None
-            },
-            "message": "No matching historical data available"
+            "Make": [],
+            "Model": [],
+            "Year": [],
+            "EngineSize": [],
+            "Distance":[],
+            "Months": []
         }
   
   filtered = filter_df_by_features(df, req.features)
   if filtered.empty:
         return {
-            "summary": None,
-            "comparison": None,
-            "plots": {
-                "boxplot_png": None,
-                "histogram_png": None,
-                "month_vs_price_png": None,
-                "distance_vs_price_png": None
-            },
-            "message": "No matching historical records"
+            "Make": [],
+            "Model": [],
+            "Year": [],
+            "EngineSize": [],
+            "Distance":[],
+            "Months": []
         }
   
   unique_vals = {}
@@ -36,4 +30,4 @@ def run_prefiltered(app, req):
       unique_vals[column] = filtered[column].unique().tolist()
       print(column)
   
-  return {col: unique_vals.get(col, []) for col in ["Make", "Model", "EngineSize", "Distance", "Months"]}
+  return {col: unique_vals.get(col, []) for col in ["Make", "Model", "Year", "EngineSize", "Distance", "Months"]}
