@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 # Routers
-from routes import prediction, historical, registration, docs
+from routes import prediction, historical, registration, docs, prefiltered
 from routes.errors import register_exception_handlers
 from routes.docs import custom_openapi
 
@@ -47,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(historical.router)
     app.include_router(registration.router)
     app.include_router(docs.router)
+    app.include_router(prefiltered.router)
 
     # Register global exception handlers
     register_exception_handlers(app)

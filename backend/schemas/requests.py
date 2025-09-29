@@ -21,6 +21,10 @@ class PredictRequest(BaseModel):
     model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
     features: CarFeatures = Field(..., description="Vehicle / Task feature object")
 
+class PrefilteredRequest(BaseModel):
+    model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
+    features: CarFeatures = Field(..., description="Vehicle / Task feature object")
+
 class HistoricalRequest(BaseModel):
     model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
     features: CarFeatures = Field(..., description="Vehicle / Task feature object")
