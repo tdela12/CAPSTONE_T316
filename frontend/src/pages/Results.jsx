@@ -60,105 +60,110 @@ export default function ResultsPage() {
             {error && <p className="text-red-500">{error}</p>}
 
             {data && (
-                <div>
-                    <h2>Prediction Results</h2>
-                    <h3>Predicted Price: ${data.prediction?.toFixed(2) ?? "N/A"}</h3>
+                <div className="resultsContainer">
 
-                    {data.plots?.shap_png && (
-                        <div>
-                            <h4>SHAP Values</h4>
-                            <img
-                                src={`data:image/png;base64,${data.plots.shap_png}`}
-                                alt="SHAP"
-                                style={{ width: "800px", height: "auto" }}
-                            />
-                        </div>
-                    )}
+                    {/* Prediction Card */}
+                    <div className="card">
+                        <h2 className="sectionTitle">Prediction Results</h2>
+                        <p className="predictedPrice">
+                            Predicted Price: <span>${data.prediction?.toFixed(2) ?? "N/A"}</span>
+                        </p>
+                    </div>
 
-                    <h2>Historical Comparison of {data.model} Services for {data.features.Model}</h2>
-                    
-                    <div>
+                    {/* Historical Filters */}
+                    <div className="card">
+                        <h2 className="sectionTitle">
+                            Historical Comparison of {data.model} Services for {data.features.Model}
+                        </h2>
+
                         <h4>Filter Historical Data</h4>
-                        {Object.entries(data.features)
-                            .filter(([key, value]) => value !== null && value !== undefined && key !== "Make" && key !== "Model")
-                            .map(([key, value]) => (
-                                <label key={key} className="block">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedFeatures[key] !== null}
-                                        onChange={() =>
-                                            setSelectedFeatures(prev => ({
-                                                ...prev,
-                                                [key]: prev[key] !== null ? null : value
-                                            }))
-                                        }
-                                    />
-                                    {key} ({value})
-                                </label>
-                            ))
-                        }
+                        <div className="filtersGrid">
+                            {Object.entries(data.features)
+                                .filter(([key, value]) => value !== null && value !== undefined && key !== "Make" && key !== "Model")
+                                .map(([key, value]) => (
+                                    <label key={key} className="filterOption">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedFeatures[key] !== null}
+                                            onChange={() =>
+                                                setSelectedFeatures(prev => ({
+                                                    ...prev,
+                                                    [key]: prev[key] !== null ? null : value
+                                                }))
+                                            }
+                                        />
+                                        {key}: <span>{value}</span>
+                                    </label>
+                                ))}
+                        </div>
 
-                        <button onClick={handleFetchHistorical}>Apply Filters</button>
+                        <button className="btnPrimary" onClick={handleFetchHistorical}>
+                            Apply Filters
+                        </button>
                         {loading && <p>Loading historical data...</p>}
                     </div>
 
-                    {historicalError && <p className="text-red-500">{historicalError}</p>}
-
+                    {/* Historical Summary */}
                     {historicalData && (
-                        <div>
-                            <h4>Filtered Historical Summary</h4>
+                        <div className="card">
+                            <h3 className="sectionTitle">Filtered Historical Summary</h3>
 
                             {historicalData.summary ? (
-                                <div>
-                                    <p>Median: ${historicalData.summary.median?.toFixed(2) ?? "N/A"}</p>
-                                    <p>Min: ${historicalData.summary.min?.toFixed(2) ?? "N/A"}</p>
-                                    <p>Max: ${historicalData.summary.max?.toFixed(2) ?? "N/A"}</p>
+                                <div className="summaryGrid">
+                                    <p><strong>Median:</strong> ${historicalData.summary.median?.toFixed(2) ?? "N/A"}</p>
+                                    <p><strong>Min:</strong> ${historicalData.summary.min?.toFixed(2) ?? "N/A"}</p>
+                                    <p><strong>Max:</strong> ${historicalData.summary.max?.toFixed(2) ?? "N/A"}</p>
+                                    <p><strong>Count:</strong> {historicalData.summary.count ?? "No available rows"}</p>
                                 </div>
                             ) : (
                                 <p>No historical summary available.</p>
                             )}
 
-                            {historicalData.comparison ? (
-                                <div>
-                                    <p>
-                                        {historicalData.comparison.confidence ?? "N/A"} confidence as the prediction falls in the{" "}
-                                        {getOrdinal(Math.round((historicalData.comparison.percentile ?? 0) * 100))} percentile
-                                    </p>
-                                </div>
-                            ) : (
-                                <p>No comparison available.</p>
+                            {historicalData.comparison && (
+                                <p className="confidenceText">
+                                    {historicalData.comparison.confidence ?? "N/A"} confidence — falls in the{" "}
+                                    {getOrdinal(Math.round((historicalData.comparison.percentile ?? 0) * 100))} percentile
+                                </p>
                             )}
-
-                            <div>
-                                {historicalData.plots?.boxplot_png && (
-                                    <img
-                                        src={`data:image/png;base64,${historicalData.plots.boxplot_png}`}
-                                        alt="Boxplot"
-                                    />
-                                )}
-                                {historicalData.plots?.histogram_png && (
-                                    <img
-                                        src={`data:image/png;base64,${historicalData.plots.histogram_png}`}
-                                        alt="Histogram"
-                                    />
-                                )}
-                                {historicalData.plots?.distance_vs_price_png && (
-                                    <img
-                                        src={`data:image/png;base64,${historicalData.plots.distance_vs_price_png}`}
-                                        alt="Distance vs Price"
-                                    />
-                                )}
-                                {historicalData.plots?.month_vs_price_png && (
-                                    <img
-                                        src={`data:image/png;base64,${historicalData.plots.month_vs_price_png}`}
-                                        alt="Month vs Price"
-                                    />
-                                )}
-                            </div>
                         </div>
                     )}
 
-                    <button onClick={() => navigate("/")}>Make Another Prediction</button>
+                    {/* Historical Plots */}
+                    {historicalData?.plots && (
+                        <div className="plotsGrid">
+                            {historicalData.plots.boxplot_png && (
+                                <img src={`data:image/png;base64,${historicalData.plots.boxplot_png}`} alt="Boxplot" className="plotImg" />
+                            )}
+                            {historicalData.plots.histogram_png && (
+                                <img src={`data:image/png;base64,${historicalData.plots.histogram_png}`} alt="Histogram" className="plotImg" />
+                            )}
+                            {historicalData.plots.distance_vs_price_png && (
+                                <img src={`data:image/png;base64,${historicalData.plots.distance_vs_price_png}`} alt="Distance vs Price" className="plotImg" />
+                            )}
+                            {historicalData.plots.month_vs_price_png && (
+                                <img src={`data:image/png;base64,${historicalData.plots.month_vs_price_png}`} alt="Month vs Price" className="plotImg" />
+                            )}
+                        </div>
+                    )}
+
+                    {/* SHAP Plot */}
+                    {data.plots?.shap_png && (
+                        <div className="card">
+                            <h3 className="sectionTitle">Feature Importance (SHAP)</h3>
+                            <img
+                                src={`data:image/png;base64,${data.plots.shap_png}`}
+                                alt="SHAP"
+                                className="plotImg"
+                            />
+                        </div>
+                    )}
+
+                    {/* Navigation */}
+                    <div className="formActions">
+                        <button className="btnSecondary" onClick={() => navigate("/")}>
+                            Make Another Prediction
+                        </button>
+                    </div>
                 </div>
             )}
         </div>

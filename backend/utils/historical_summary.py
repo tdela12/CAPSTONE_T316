@@ -8,14 +8,14 @@ def filter_df_by_features(df: pd.DataFrame, raw_data):
     """
     data_dict = raw_data.model_dump()
     required_keys = ["Make", "Model"]
-
+    
     for key in required_keys:
         if key not in df.columns or data_dict.get(key) is None:
             raise ValueError(f"{key} is required for filtering but is missing")
     
     # Start with required filters
     mask = (df["Make"] == data_dict["Make"]) & (df["Model"] == data_dict["Model"])
-    
+
     # Optional filters
     for key, value in data_dict.items():
         if key in required_keys or value is None or key not in df.columns:
@@ -30,6 +30,7 @@ def filter_df_by_features(df: pd.DataFrame, raw_data):
             print(f"Warning: Could not apply filter for {key}={value}: {e}")
     
     filtered_df = df[mask]
+
     if filtered_df.empty:
         print("No matching rows found. Filters applied:", data_dict)
     
@@ -85,6 +86,7 @@ def build_price_summary(df, price_col="AdjustedPrice"):
     if price_series.empty:
         return {"min": 0.0, "iqr_low": 0.0, "median": 0.0, "iqr_high": 0.0, "max": 0.0}
 
+    print(len(price_series))
     # Compute summary
     return {
         "min": float(price_series.min()),
@@ -92,4 +94,5 @@ def build_price_summary(df, price_col="AdjustedPrice"):
         "median": float(price_series.median()),
         "iqr_high": float(price_series.quantile(0.75)),
         "max": float(price_series.max()),
+        "count": float(len(price_series)),
     }

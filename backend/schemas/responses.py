@@ -37,6 +37,7 @@ class SummaryResult(BaseModel):
     median: Optional[float]
     iqr_low: Optional[float]
     iqr_high: Optional[float]
+    count: Optional[float]
 
 class PredictResponse(BaseModel):
     model: str

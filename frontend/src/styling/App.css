@@ -4,6 +4,8 @@
   text-align: center;
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color: #222;
+  line-height: 1.6;
+  background-color: #f8f9fa;
 }
 
 /* Reset */
@@ -13,100 +15,209 @@
   padding: 0;
 }
 
-/* Buttons */
-button {
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1.2rem;
-  background-color: #491724;
-  color: white;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
-
-button:hover {
-  background-color: #723947;
-  transform: translateY(-2px);
-  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.25);
-}
-
-button:active {
-  transform: scale(0.97);
-}
-
 /* App background */
 .App {
   width: 100vw;
   min-height: 100vh;
-  background: linear-gradient(
-      rgba(0, 0, 0, 0.5), 
-      rgba(0, 0, 0, 0.5)
-    );
+  background: linear-gradient(120deg, #f7f7f9, #ececec);
   display: flex;
-  flex-direction: column;
   justify-content: center;
-  align-items: center;
+  padding: 3rem 1rem;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #222;
 }
 
-/* Page container */
+/* Main page container */
 .MainPage {
-  background-color: rgba(255, 255, 255, 0.95);
-  display: flex;
-  flex-direction: column;
   width: 100%;
   max-width: 900px;
-  margin: 2rem auto;
-  border-left: solid 5px #491724;
-  border-right: solid 5px #491724;
-  border-radius: 12px;
-  box-shadow: 0 6px 15px rgba(0,0,0,0.2);
-  padding: 2rem;
-}
-
-/* Login form */
-.login {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 1.1rem;
-  width: 100%;
+  gap: 2rem;
+  border-top: 6px solid #4a1d2c;
 }
 
+/* Feature Form */
 .featureForm {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
-  width: 80%;
+  gap: 1rem;
+  width: 100%;
   max-width: 500px;
-  text-align: left;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #fafafa;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-/* Inputs */
+/* Labels */
+.featureForm label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #333;
+  margin-bottom: 0.3rem;
+  display: block;
+}
+
+/* Inputs & Dropdowns */
 .enterBar {
+  width: 100%;
   border-radius: 8px;
-  padding: 0.6rem 1rem;
+  padding: 0.7rem 1rem;
   border: 1px solid #ccc;
   font-size: 1rem;
-  transition: 0.3s border, 0.3s box-shadow;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .enterBar:focus {
-  border-color: #491724;
-  box-shadow: 0 0 5px rgba(73, 23, 36, 0.4);
+  border-color: #4a1d2c;
+  box-shadow: 0 0 6px rgba(74, 29, 44, 0.3);
   outline: none;
 }
 
-#imgElem {
-  margin-top: 20px;
-  max-width: 80%;
-  height: auto;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  border: 2px solid #491724;
-  transition: transform 0.2s ease-in-out;
+.formActions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
 }
 
-#imgElem:hover {
-  transform: scale(1.02);
+/* Predict Button */
+#predictBtn {
+  background: linear-gradient(135deg, #4a1d2c, #7a2f46);
+  border: none;
+  border-radius: 10px;
+  padding: 0.8rem 2rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+#predictBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+  background: linear-gradient(135deg, #5c2437, #8a3a52);
+}
+
+#predictBtn:active {
+  transform: scale(0.97);
+}
+
+.resultsContainer {
+  max-width: 900px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.sectionTitle {
+  margin-bottom: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.predictedPrice span {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #2563eb;
+}
+
+.filtersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.filterOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.confidenceText {
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+.plotsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.plotImg {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, #4a1d2c, #7a2f46);
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 2rem;
+  font-size: 1.0rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+  background: linear-gradient(135deg, #5c2437, #8a3a52);
+}
+.btnPrimary:active {
+  transform: scale(0.97);
+}
+
+.btnSecondary {
+  background: linear-gradient(135deg, #4a1d2c, #7a2f46);
+  color: white;
+  cursor: pointer;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+}
+.btnSecondary:hover {
+  background: linear-gradient(135deg, #5c2437, #8a3a52);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
+
+}
+
+.btnSecondary:active {
+  transform: scale(0.97);
+}
+
