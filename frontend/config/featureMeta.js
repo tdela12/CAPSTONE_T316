@@ -1,14 +1,14 @@
 // config/featureMeta.js
 export const featureMeta = {
-  Make: { label: "Make", type: "text" },
-  Model: { label: "Model", type: "text" },
-  TaskName: { label: "Task Name", type: "text" },
-  Odometer: { label: "Odometer", type: "number" },
-  Year: { label: "Year", type: "number" },
-  EngineSize: { label: "Engine Size", type: "number" },
-  Distance: { label: "Distance", type: "number" },
-  Months: { label: "Months", type: "number" },
-  AdjustedPrice: { label: "Adjusted Price", type: "number" },
+  Make: { label: "Make", type: "text", options: []},
+  Model: { label: "Model", type: "text", options: []},
+  TaskName: { label: "Task Name", type: "text", options: []},
+  Odometer: { label: "Odometer", type: "number", options: []},
+  Year: { label: "Year", type: "number", options: []},
+  EngineSize: { label: "Engine Size", type: "number", options: []},
+  Distance: { label: "Distance", type: "number", options: []},
+  Months: { label: "Months", type: "number", options: []},
+  AdjustedPrice: { label: "Adjusted Price", type: "number", options: []},
 
   FuelType: {
     label: "Fuel Type",

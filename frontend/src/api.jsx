@@ -55,6 +55,19 @@ export const useHistoricalSummary = () => {
   return { data, error, fetchHistorical };
 };
 
+export const usePrefilter = () => {
+  const { data, error, callApi } = useApi();
+
+  const prefilter = (taskType, features) =>
+    callApi({
+      method: "post",
+      url: "http://127.0.0.1:8000/historical/prefilter",
+      payload: { model_name: taskType, features},
+    });
+
+  return { data, error, prefilter };
+};
+
 // Standalone API function
 export const getRegistration = async (registration) => {
   if (!registration) return null;

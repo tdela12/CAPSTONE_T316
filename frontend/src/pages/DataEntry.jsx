@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePredict } from "../api";
+import { usePrefilter } from "../api";
 import { getRegistration } from "../api";
 import { taskFeatures } from "../../config/features";
 import { featureMeta } from "../../config/featureMeta";
@@ -25,6 +26,9 @@ export default function DataEntry() {
   });
 
   const { predict } = usePredict();
+  const { data: filteredData, prefilter } = usePrefilter();
+  const [dynamicOptions, setDynamicOptions] = useState({});
+
   const navigate = useNavigate();
 
   const stringUIFields = ["Registration", "Make", "Model"];
@@ -32,7 +36,7 @@ export default function DataEntry() {
 
   // Update feature value
   const handleChange = (key, value) => {
-  if (stringUIFields.includes(key) && typeof value === "string") {
+    if (stringUIFields.includes(key) && typeof value === "string") {
       value = value.toUpperCase();
     }
     setFeatures((prev) => ({ ...prev, [key]: value }));
@@ -55,6 +59,7 @@ export default function DataEntry() {
       "DriveType",
     ];
 
+
     // Use functional state update to ensure the latest state
     setFeatures((prevFeatures) => {
       const newFeatures = { ...prevFeatures };
@@ -68,6 +73,29 @@ export default function DataEntry() {
 
   };
 
+  const handlePrefilter = async () => {
+    const payloadFeatures = {};
+
+    Object.keys(features).forEach((key) => {
+      let value = features[key] || null;
+      if (["odometer", "year", "engineSize", "distance", "months", "adjustedPrice"].includes(key)) {
+        value = value !== null ? Number(value) : null;
+      }
+      payloadFeatures[key] = value;
+    });
+
+    const response = await prefilter(taskType, payloadFeatures);
+
+    if (response) {
+      setDynamicOptions((prev) => ({
+        ...prev,
+        ...Object.fromEntries(
+          Object.entries(response).map(([key, values]) => [key, values || []])
+        ),
+      }));
+    }
+  };
+
   // Handle form submission
   const handlePredict = async (e) => {
     e.preventDefault();
@@ -78,7 +106,6 @@ export default function DataEntry() {
     const payloadFeatures = {};
     Object.keys(features).forEach((key) => {
       let value = features[key] || null;
-
 
       // Convert numeric fields
       if (["odometer", "year", "engineSize", "distance", "months", "adjustedPrice"].includes(key)) {
@@ -139,38 +166,24 @@ export default function DataEntry() {
 
           if (!meta) return null; // safety check
 
-          if (meta.type === "select") {
-            return (
-              <div className="formGroup" key={field}>
-                <label htmlFor={field}>{meta.label}:</label>
-                <select
-                  id={field}
-                  className="enterBar"
-                  value={features[field]}
-                  onChange={(e) => handleChange(field, e.target.value)}
-                >
-                  <option value="">-- Choose --</option>
-                  {meta.options.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            );
-          }
+          const options = dynamicOptions[field] || meta.options;
 
           return (
             <div className="formGroup" key={field}>
               <label htmlFor={field}>{meta.label}:</label>
-              <input
-                type={meta.type}
-                placeholder={`Please enter ${meta.type}`}
+              <select
                 className="enterBar"
-                id={field}
                 value={features[field]}
                 onChange={(e) => handleChange(field, e.target.value)}
-              />
+                onBlur={handlePrefilter}
+              >
+                <option value="">-- Choose --</option>
+                {options.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
             </div>
           );
         })}
