@@ -113,7 +113,7 @@ export default function ResultsPage() {
                                     <p>Median: ${historicalData.summary.median?.toFixed(2) ?? "N/A"}</p>
                                     <p>Min: ${historicalData.summary.min?.toFixed(2) ?? "N/A"}</p>
                                     <p>Max: ${historicalData.summary.max?.toFixed(2) ?? "N/A"}</p>
-                                    <p>Count: ${historicalData.summary.count?.toFixed(2) ?? "N/A"}</p>
+                                    <p>Count: {historicalData.summary.count ?? "No available rows"}</p>
                                 </div>
                             ) : (
                                 <p>No historical summary available.</p>
