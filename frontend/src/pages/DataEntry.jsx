@@ -27,9 +27,12 @@ export default function DataEntry() {
   const { predict } = usePredict();
   const navigate = useNavigate();
 
+  const stringUIFields = ["Registration", "Make", "Model"];
+
+
   // Update feature value
   const handleChange = (key, value) => {
-    if (typeof value === "string") {
+  if (stringUIFields.includes(key) && typeof value === "string") {
       value = value.toUpperCase();
     }
     setFeatures((prev) => ({ ...prev, [key]: value }));
