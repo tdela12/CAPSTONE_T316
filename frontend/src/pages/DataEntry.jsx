@@ -68,7 +68,6 @@ export default function DataEntry() {
 
   };
 
-
   // Handle form submission
   const handlePredict = async (e) => {
     e.preventDefault();
