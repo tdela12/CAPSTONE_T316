@@ -15,9 +15,9 @@ def run_historical_summary(app, req):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unknown model: {req.model_name}"
         )
-
+    
     df = app.state.historical_sets.get(req.model_name)
-    filtered = filter_df_by_features(df, req.features)
+    filtered = filter_df_by_features(df, req.features, required_keys=["Make", "Model"])
 
     if df.empty:
         return {

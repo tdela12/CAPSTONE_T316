@@ -3,7 +3,7 @@ from schemas.requests import PrefilteredRequest
 from schemas.responses import PrefilteredResponse, ErrorResponse
 from services.prefiltered import run_prefiltered
 
-router = APIRouter(prefix="/prefilter", tags=["Prefiltered"])
+router = APIRouter(prefix="/historical/prefilter", tags=["Historical"])
 
 
 @router.post(

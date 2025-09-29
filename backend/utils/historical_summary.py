@@ -1,22 +1,23 @@
 import pandas as pd
 import numpy as np
 
-def filter_df_by_features(df: pd.DataFrame, raw_data):
+def filter_df_by_features(df: pd.DataFrame, raw_data, required_keys=None):
     """
     Filters dataframe by required fields Make & Model, and any optional fields present.
     Handles type mismatches and NaNs gracefully.
     """
     data_dict = raw_data.model_dump()
-    required_keys = ["Make", "Model"]
-    
+    required_keys = required_keys or []
+
     for key in required_keys:
         if key not in df.columns or data_dict.get(key) is None:
             raise ValueError(f"{key} is required for filtering but is missing")
-    
-    # Start with required filters
-    mask = (df["Make"] == data_dict["Make"]) & (df["Model"] == data_dict["Model"])
 
-    # Optional filters
+    mask = pd.Series(True, index=df.index)
+
+    for key in required_keys:
+        mask &= df[key] == data_dict[key]
+
     for key, value in data_dict.items():
         if key in required_keys or value is None or key not in df.columns:
             continue
@@ -28,12 +29,12 @@ def filter_df_by_features(df: pd.DataFrame, raw_data):
                 mask &= df[key] == value
         except Exception as e:
             print(f"Warning: Could not apply filter for {key}={value}: {e}")
-    
+
     filtered_df = df[mask]
 
     if filtered_df.empty:
         print("No matching rows found. Filters applied:", data_dict)
-    
+
     return filtered_df
 
 
