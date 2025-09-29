@@ -31,8 +31,6 @@ def run_historical_summary(app, req):
             },
             "message": "No matching historical data available"
         }
-
-    # --- filtering ---
     
     if filtered.empty:
         return {
@@ -47,9 +45,6 @@ def run_historical_summary(app, req):
             "message": "No matching historical records"
         }
 
-   
-
-    # --- summary statistics ---
     summary = build_price_summary(filtered)
 
     # --- comparison metrics ---
