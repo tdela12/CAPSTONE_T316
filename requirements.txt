@@ -16,6 +16,9 @@ numpy
 pandas
 scipy
 openpyxl
+pytest 
+httpx 
+pytest-asyncio
 
 # Machine Learning
 scikit-learn
