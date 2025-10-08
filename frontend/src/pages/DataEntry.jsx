@@ -149,6 +149,7 @@ export default function DataEntry() {
             className="enterBar"
             value={taskType}
             onChange={(e) => setTaskType(e.target.value)}
+            onBlur={handlePrefilter}
           >
             <option value="">-- Choose a task --</option>
             {Object.keys(taskFeatures).map((task) => (
@@ -171,19 +172,21 @@ export default function DataEntry() {
           return (
             <div className="formGroup" key={field}>
               <label htmlFor={field}>{meta.label}:</label>
-              <select
+              <input
+                list={`${field}-options`}
+                id={field}
+                name={field}
                 className="enterBar"
-                value={features[field]}
+                value={features[field] || ""}
+                placeholder={`Enter or select ${meta.label.toLowerCase()}`}
                 onChange={(e) => handleChange(field, e.target.value)}
                 onBlur={handlePrefilter}
-              >
-                <option value="">-- Choose --</option>
+              />
+              <datalist id={`${field}-options`}>
                 {options.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
+                  <option key={opt} value={opt} />
                 ))}
-              </select>
+              </datalist>
             </div>
           );
         })}
