@@ -3,8 +3,8 @@ from typing import Optional
 
 class CarFeatures(BaseModel):
     TaskName: Optional[str] = Field(..., description="Name of the task/service (e.g., Wheel alignment, Brake service)")
-    Make: str = Field(..., description="Vehicle manufacturer (e.g., Toyota)")
-    Model: str = Field(..., description="Vehicle model (e.g., Corolla)")
+    Make: Optional[str] = Field(..., description="Vehicle manufacturer (e.g., Toyota)")
+    Model: Optional[str] = Field(..., description="Vehicle model (e.g., Corolla)")
     Year: Optional[int] = Field(None, description="Year of manufacture")
     FuelType: Optional[str] = Field(None, description="Fuel type (e.g., Petrol, Diesel, Hybrid)")
     Transmission: Optional[str] = Field(None, description="Transmission type (e.g., Auto, Manual)")
@@ -18,6 +18,10 @@ class RegistrationRequest(BaseModel):
     Registration: str = Field(..., description="Vehicle registration number")
 
 class PredictRequest(BaseModel):
+    model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
+    features: CarFeatures = Field(..., description="Vehicle / Task feature object")
+
+class PrefilteredRequest(BaseModel):
     model_name: str = Field(..., description="Which model to use: one of Capped, Logbook, Prescribed, Repair")
     features: CarFeatures = Field(..., description="Vehicle / Task feature object")
 

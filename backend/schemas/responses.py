@@ -10,6 +10,14 @@ class RegistrationResponse(BaseModel):
     EngineSize: Optional[float] = Field(None, description="Engine displacement in litres")
     Transmission: Optional[str] = Field(None, description="Transmission type (e.g., Auto, Manual)")
     DriveType: Optional[str] = Field(None, description="Drive type (e.g., FWD, RWD, AWD)")
+
+class PrefilteredResponse(BaseModel):
+    Make: list[str] = Field(..., description="Unique Vehicle manufacturer Categories (e.g., Toyota)")
+    Model: list[str] = Field(..., description="Unique Vehicle model Categories(e.g., Corolla)")
+    Year: Optional[list[int]] = Field(None, description="Unique Years of manufacture")
+    EngineSize: Optional[list[float]] = Field(None, description="Unique Engine displacement in litres Categories")
+    Distance: Optional[list[float]] = Field(None, description="Unique Vehicle odometer reading Categories (km)")
+    Months: Optional[list[float]] = Field(None, description="Months since service or warranty (if applicable)")
     
 class PredictPlotOutputs(BaseModel):
     shap_png: Optional[str] = Field(None, description="Base64 PNG of SHAP waterfall plot")

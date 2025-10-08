@@ -7,6 +7,7 @@ export default function ResultsPage() {
     const navigate = useNavigate();
 
     const { fetchHistorical, data: historicalData, error: historicalError } = useHistoricalSummary();
+    
     const [loading, setLoading] = useState(false);
 
     if (!location.state) {
