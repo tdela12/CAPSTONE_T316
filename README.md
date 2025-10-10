@@ -34,19 +34,7 @@
 
   <p align="left">
     This project, developed as part of the QUT T316 Capstone Project in collaboration with AutoGuru, focuses on designing and implementing a data-driven machine learning solution to enhance operational insights and automation. It combines robust data preprocessing, model development, and system integration within a structured solution architecture framework.
-  </p>
-  <p align="center">
-    <br />
-    <a href="https://github.com/tdela12/CAPSTONE_T316"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
-    <a href="https://github.com/tdela12/CAPSTONE_T316">View Demo</a>
-    &middot;
-    <a href="https://github.com/tdela12/CAPSTONE_T316/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
-    &middot;
-    <a href="https://github.com/tdela12/CAPSTONE_T316/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
-  </p>
-</div>
+
 
 
 
