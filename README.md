@@ -134,7 +134,7 @@ Once the project is set up, you can start both backend and frontend to test the 
 1. Running the Backend
    ```sh
    cd backend
-   uvicorn main:app --reload
+   uvicorn server:app --reload
    ```
    Verify Server is running by accessing swagger docs at  http://127.0.0.1:8000/docs
 
