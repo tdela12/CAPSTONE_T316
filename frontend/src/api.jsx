@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { generateTraceId } from "./utils";
 import axios from "axios";
 
 // Generic hook for API calls
@@ -31,6 +32,7 @@ const useApi = () => {
 // Specific hooks
 export const usePredict = () => {
   const { data, error, callApi } = useApi();
+  const traceId = generateTraceId();
 
   const predict = (taskType, features) =>
     callApi({
@@ -39,6 +41,8 @@ export const usePredict = () => {
       payload: { model_name: taskType, features },
     });
 
+  console.log("Trace ID:", traceId, "Response:", result);
+  
   return { data, error, predict };
 };
 
