@@ -6,7 +6,7 @@ import axios from "axios";
 const useApi = () => {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-
+  
   const callApi = async ({ method = "get", url, payload, params }) => {
     try {
       const res = await axios({
@@ -41,7 +41,7 @@ export const usePredict = () => {
       payload: { model_name: taskType, features },
     });
 
-  console.log("Trace ID:", traceId, "Response:", result);
+  console.log("Trace ID:", traceId);
   
   return { data, error, predict };
 };

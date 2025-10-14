@@ -41,7 +41,6 @@ def run_prediction(app, req, trace_id):
 
     logger.info(
         f"Model predicted price={prediction:.2f}",
-        extra={"trace_id": trace_id},
     )
 
 
