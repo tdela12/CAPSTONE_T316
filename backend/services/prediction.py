@@ -2,9 +2,11 @@ from fastapi import HTTPException, status
 from models.preprocess import preprocess
 from utils.plotting import generate_shap_plot
 from config import MODEL_FEATURES
+import logging
 
+logger = logging.getLogger("prediction_service")
 
-def run_prediction(app, req):
+def run_prediction(app, req, trace_id):
     """
     Runs a prediction for a given model and features.
     Uses models loaded in app.state.
@@ -18,6 +20,7 @@ def run_prediction(app, req):
 
     model = app.state.models[req.model_name]
     processed = preprocess(req.features, req.model_name)
+    logger.info("Preprocessing input data")
 
     try:
         prediction = float(model.predict(processed)[0])
@@ -28,14 +31,19 @@ def run_prediction(app, req):
         )
 
     # Generate SHAP plot
-    try:
-        shap_b64 = generate_shap_plot(
+    
+    shap_b64 = generate_shap_plot(
             model,
             processed,
             MODEL_FEATURES[req.model_name]
         )
-    except Exception as e:
-        shap_b64 = None  # don’t fail the endpoint if SHAP fails
+    
+
+    logger.info(
+        f"Model predicted price={prediction:.2f}",
+        extra={"trace_id": trace_id},
+    )
+
 
     return {
         "model": req.model_name,
