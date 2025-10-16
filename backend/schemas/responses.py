@@ -12,6 +12,7 @@ class RegistrationResponse(BaseModel):
     DriveType: Optional[str] = Field(None, description="Drive type (e.g., FWD, RWD, AWD)")
 
 class PrefilteredResponse(BaseModel):
+    TaskName: list[str] = Field(..., description="Name of the task/service (e.g., Wheel alignment, Brake service)")
     Make: list[str] = Field(..., description="Unique Vehicle manufacturer Categories (e.g., Toyota)")
     Model: list[str] = Field(..., description="Unique Vehicle model Categories(e.g., Corolla)")
     Year: Optional[list[int]] = Field(None, description="Unique Years of manufacture")

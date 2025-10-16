@@ -7,6 +7,7 @@ def run_prefiltered(app, req):
 
   if df.empty:
         return {
+            "TaskName": [],
             "Make": [],
             "Model": [],
             "Year": [],
@@ -18,6 +19,7 @@ def run_prefiltered(app, req):
   filtered = filter_df_by_features(df, req.features)
   if filtered.empty:
         return {
+            "TaskName": [],
             "Make": [],
             "Model": [],
             "Year": [],
@@ -31,4 +33,4 @@ def run_prefiltered(app, req):
       vals = filtered[column].dropna().unique().tolist()
       unique_vals[column] = [v.item() if isinstance(v, (np.generic,)) else v for v in vals]
     
-  return {col: unique_vals.get(col, []) for col in ["Make", "Model", "Year", "EngineSize", "Distance", "Months"]}
+  return {col: unique_vals.get(col, []) for col in ["TaskName", "Make", "Model", "Year", "EngineSize", "Distance", "Months"]}

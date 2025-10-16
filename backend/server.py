@@ -1,6 +1,9 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+import uuid
+from datetime import datetime
 from fastapi.staticfiles import StaticFiles
+import logging
 
 # Routers
 from routes import prediction, historical, registration, docs, prefiltered
@@ -13,6 +16,15 @@ from models.loader import load_all_models, load_historical_sets, load_rego_data
 from config import CORS_ORIGINS, ALLOW_ALL_CORS_DEV
 from fastapi.middleware.cors import CORSMiddleware
 
+# Setup Server logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(trace_id)s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+
+logger = logging.getLogger("server")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,7 +36,6 @@ async def lifespan(app: FastAPI):
 
 
     print("Shutting down app")
-
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -66,3 +77,21 @@ def create_app() -> FastAPI:
 
 # For running via: uvicorn server:app --reload
 app = create_app()
+
+@app.middleware("http")
+async def add_trace_id(request: Request, call_next):
+    trace_id = request.headers.get("X-Trace-ID", f"TR-{uuid.uuid4().hex[:8].upper()}")
+    request.state.trace_id = trace_id
+
+    old_factory = logging.getLogRecordFactory()
+    def record_factory(*args, **kwargs):
+        record = old_factory(*args, **kwargs)
+        record.trace_id = trace_id
+        return record
+    logging.setLogRecordFactory(record_factory)
+
+    response = await call_next(request)
+    response.headers["X-Trace-ID"] = trace_id
+    return response
+
+logger.info("Server started successfully", extra={"trace_id": "SYSTEM"})
